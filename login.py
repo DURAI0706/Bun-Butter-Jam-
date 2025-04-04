@@ -135,89 +135,40 @@ def process_callback(auth_code):
         st.error(f"⚠️ Authentication failed: {e}")
         return None
 
-import streamlit as st
-
 def show_login_page():
-    """Render minimal login interface with Google Sign-in button"""
-    
-    # Custom CSS for styling
-    st.markdown(
-        """
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap');
-            
-            body {
-                font-family: 'Roboto', sans-serif;
-                background-color: #fff;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-                margin: 0;
-            }
-            
-            .login-container {
-                text-align: center;
-                padding: 40px;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                max-width: 400px;
-                width: 100%;
-            }
-            
-            /* Google Sign-in Button */
-            .google-signin {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background-color: #4285F4;
-                color: white;
-                padding: 12px 24px;
-                border: none;
-                border-radius: 4px;
-                font-size: 16px;
-                font-weight: 500;
-                cursor: pointer;
-                width: 100%;
-                text-decoration: none;
-                transition: background-color 0.3s;
-            }
-            
-            .google-signin img {
-                width: 20px;
-                height: 20px;
-                margin-right: 12px;
-                background-color: white;
-                padding: 4px;
-                border-radius: 2px;
-            }
-            
-            .google-signin:hover {
-                background-color: #357ae8;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    """Render login interface and process login"""
+    st.title("🔐 Login to Coronation Bakery Dashboard")
 
-    # Main container
-    st.markdown('<div class="login-container">', unsafe_allow_html=True)
-    
-    # Google Sign-in Button
-    auth_url = get_google_auth_url()
-    if auth_url:
-        st.markdown(f"""
-            <a href="{auth_url}" class="google-signin">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg">
-                Sign in with Google
-            </a>
+    # Handle redirect callback
+    if "code" in st.query_params:
+        with st.spinner("Authenticating..."):
+            user_info = process_callback(st.query_params["code"])
+            if user_info:
+                st.success(f"🎉 Welcome, {user_info.get('name', 'User')}!")
+                st.query_params.clear()
+                return True
+
+    # Show sign-in button
+    if not st.session_state.get("authenticated", False):
+        st.markdown("""
+        <div style='text-align: center; padding: 20px;'>
+            <h3>Please sign in with your Google account to continue</h3>
+        </div>
         """, unsafe_allow_html=True)
-    else:
-        st.error("Failed to create Google login link.")
-    
-    # Closing tag
-    st.markdown('</div>', unsafe_allow_html=True)
-    
+
+        auth_url = get_google_auth_url()
+        if auth_url:
+            st.markdown(f"""
+                <a href="{auth_url}">
+                    <button style="background-color:#4285F4;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">
+                        Sign in with Google
+                    </button>
+                </a>
+            """, unsafe_allow_html=True)
+        else:
+            st.error("🚨 Failed to create Google login link.")
+
+    return st.session_state.get("authenticated", False)
 
 def logout():
     """Clear session state"""
