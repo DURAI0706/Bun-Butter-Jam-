@@ -176,7 +176,7 @@ def show_login_page():
         <div class="login-card">
             <h3>Login to Coronation Bakery Dashboard</h3>
     """, unsafe_allow_html=True)
-    
+
     auth_url = get_google_auth_url()
     if auth_url:
         st.markdown(f"""
