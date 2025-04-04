@@ -12,9 +12,9 @@ import google.auth.transport.requests
 def get_config(key: str, default=None):
     return st.secrets.get(key, default)
 
-GOOGLE_CLIENT_ID = get_config("google_client_id")
-GOOGLE_CLIENT_SECRET = get_config("google_client_secret")
-REDIRECT_URI = get_config("redirect_uri_local") if get_config("environment") == "local" else get_config("redirect_uri_prod")
+GOOGLE_CLIENT_ID = st.secrets["GOOGLE_CLIENT_ID"]
+GOOGLE_CLIENT_SECRET = st.secrets["GOOGLE_CLIENT_SECRET"]
+REDIRECT_URI = st.secrets["REDIRECT_URI"]
 
 SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email",
@@ -30,7 +30,7 @@ os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # For local development only
 
 # Create client secret file dynamically
 def create_client_secret_file():
-    config = {
+    client_config = {
         "web": {
             "client_id": GOOGLE_CLIENT_ID,
             "project_id": "business-analytics",
