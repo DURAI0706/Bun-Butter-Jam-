@@ -26,9 +26,16 @@ TOKEN_URL = "https://oauth2.googleapis.com/token"
 USER_INFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
 
 CLIENT_SECRET_FILE = os.path.join(pathlib.Path(__file__).parent, "client_secret.json")
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # For local development only
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"  # Only for local development
 
-# Create client secret file dynamically
+# ✅ Allowed emails for login
+ALLOWED_USERS = {
+    "durai.varshith@gmail.com",
+    "vishwajith@student.tce.edu",
+    "duraisamy@student.tce.edu"
+}
+
+# 🔧 Create client_secret.json dynamically
 def create_client_secret_file():
     config = {
         "web": {
@@ -49,7 +56,7 @@ def create_client_secret_file():
         st.error(f"Failed to write client_secret.json: {e}")
         return False
 
-# Setup OAuth flow
+# 🚀 Setup OAuth flow
 def setup_google_auth():
     if not os.path.exists(CLIENT_SECRET_FILE):
         if not create_client_secret_file():
@@ -65,7 +72,7 @@ def setup_google_auth():
         st.error(f"OAuth setup failed: {e}")
         return None
 
-# Get authorization URL
+# 🔗 Get auth URL
 def get_google_auth_url():
     flow = setup_google_auth()
     if not flow:
@@ -77,14 +84,7 @@ def get_google_auth_url():
     )
     return auth_url
 
-# Allowed user emails
-ALLOWED_USERS = {
-    "durai.varshith@gmail.com",
-    "vishwajith@student.tce.edu",
-    "duraisamy@student.tce.edu"
-}
-
-# Handle callback
+# 🔁 Process callback after redirect from Google
 def process_callback(auth_code):
     try:
         flow = setup_google_auth()
@@ -108,9 +108,10 @@ def process_callback(auth_code):
 
         email = user_info.get("email", "").lower()
         if email not in ALLOWED_USERS:
-            st.error("Access denied. Email not authorized.")
+            st.error("🚫 Access denied. Your email is not authorized.")
             return None
 
+        # ✅ Store in session
         st.session_state.update({
             "authenticated": True,
             "user_info": user_info,
@@ -127,24 +128,25 @@ def process_callback(auth_code):
         st.error(f"Authentication failed: {e}")
         return None
 
+# 🔐 Login UI & flow
 def show_login_page():
     st.title("🔐 EDA Dashboard Login")
 
-    # ✅ Already logged in
+    # ✅ If already authenticated, show welcome
     if st.session_state.get("authenticated", False):
         user_info = get_user_info()
         st.success(f"Welcome back, {user_info.get('name', 'User')}!")
         return True
 
-    # ✅ Login callback handling
+    # 🌀 Process Google callback
     if "code" in st.query_params:
         with st.spinner("Authenticating..."):
             user_info = process_callback(st.query_params["code"])
             if user_info:
-                st.query_params.clear()
+                st.query_params.clear()  # remove ?code= after login
                 return True
 
-    # 🔒 Login screen UI
+    # 👤 Show login UI
     st.markdown("""
         <div style='text-align: center; padding: 20px; background: rgba(255,255,255,0.3); border-radius: 10px;'>
             <h3>Sign in to access the Dashboard</h3>
@@ -164,14 +166,10 @@ def show_login_page():
 
     return False
 
-# Logout and session reset
+# 🔓 Logout
 def logout():
     st.session_state.clear()
 
-# Get current user info
+# 👤 Get user info
 def get_user_info():
     return st.session_state.get("user_info")
-
-# Initialize session state
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
