@@ -37,13 +37,16 @@ def apply_dark_theme():
     """, unsafe_allow_html=True)
 
 @st.cache_data
-def load_data(uploaded_file):
-    """Load data from uploaded file with caching"""
+def load_data(uploaded_file=None):
+    """Load data from uploaded file or default CSV with caching"""
     try:
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
+        if uploaded_file is not None:
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file)
         else:
-            df = pd.read_excel(uploaded_file)
+            df = pd.read_csv("Coronation Bakery Dataset.csv")
         return df
     except Exception as e:
         st.error(f"Error loading file: {str(e)}")
