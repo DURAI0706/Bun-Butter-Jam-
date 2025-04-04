@@ -135,78 +135,137 @@ def process_callback(auth_code):
         st.error(f"⚠️ Authentication failed: {e}")
         return None
 
+import streamlit as st
+
 def show_login_page():
-    """Render login interface and process login"""
+    """Render login interface with Google Sign-in, matching reference design"""
+
+    # Custom CSS for styling
     st.markdown(
         """
         <style>
-            .login-container {
+            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+            body {
+                font-family: 'Poppins', sans-serif;
+                background-color: #fff;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 height: 100vh;
-                background-color: #fff5e1;
+                margin: 0;
             }
-            .login-card {
-                background: white;
-                padding: 40px;
+
+            .login-container {
+                display: flex;
+                width: 80%;
+                max-width: 1100px;
+                background-color: #fff;
                 border-radius: 10px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                text-align: center;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
             }
-            .login-button {
-                background-color: #4285F4;
-                color: white;
-                padding: 10px 20px;
-                border: none;
-                border-radius: 5px;
-                font-size: 16px;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                gap: 10px;
+
+            /* Left Side Image */
+            .login-image {
+                width: 55%;
+                background: url('https://img.freepik.com/premium-vector/people-character-cook-cartoon-dessert-vector-illustration-flat-girl-boy-near-huge-sweet-food-concept-happy-tiny-person-have-fun-together_109722-4964.jpg') center/cover no-repeat;
             }
-            .login-button:hover {
-                background-color: #357ae8;
+
+            /* Right Side Form */
+            .login-form {
+                width: 45%;
+                padding: 50px;
+                text-align: left;
             }
-            .header-title {
-                font-size: 24px;
-                font-weight: bold;
-                color: #6d4c41;
+
+            .login-form h2 {
+                font-size: 28px;
+                font-weight: 700;
+                color: #4d2600;
+                margin-bottom: 10px;
+            }
+
+            .login-form p {
+                font-size: 14px;
+                color: #7a5c46;
                 margin-bottom: 20px;
             }
-            .google-logo {
-                width: 20px;
-                height: 20px;
+
+            /* Google Sign-in Button */
+            .google-signin {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background-color: #4285F4;
+                color: white;
+                padding: 12px;
+                border: none;
+                border-radius: 5px;
+                font-size: 18px;
+                cursor: pointer;
+                width: 100%;
+                text-decoration: none;
+            }
+
+            .google-signin img {
+                width: 24px;
+                height: 24px;
+                margin-right: 10px;
+            }
+
+            .google-signin:hover {
+                background-color: #357ae8;
+            }
+
+            /* Responsive Design */
+            @media (max-width: 900px) {
+                .login-container {
+                    flex-direction: column;
+                }
+                .login-image {
+                    width: 100%;
+                    height: 250px;
+                }
+                .login-form {
+                    width: 100%;
+                }
             }
         </style>
         """,
         unsafe_allow_html=True
     )
 
-    st.markdown("<div class='login-container'>", unsafe_allow_html=True)
+    # Layout
+    st.markdown('<div class="login-container">', unsafe_allow_html=True)
 
-    st.markdown("<div class='login-card'>", unsafe_allow_html=True)
-    st.markdown("<div class='header-title'>🍰 Bakery Products</div>", unsafe_allow_html=True)
-    
+    # Left Side (Image)
+    st.markdown('<div class="login-image"></div>', unsafe_allow_html=True)
+
+    # Right Side (Login Form)
+    st.markdown('<div class="login-form">', unsafe_allow_html=True)
+    st.markdown('<h2>🍰 Bakery Products</h2>', unsafe_allow_html=True)
+    st.markdown('<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>', unsafe_allow_html=True)
+
+    # Google Sign-in Button
     auth_url = get_google_auth_url()
     if auth_url:
         st.markdown(f"""
-            <a href="{auth_url}">
-                <button class="login-button">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" class="google-logo">
-                    Sign in with Google
-                </button>
+            <a href="{auth_url}" class="google-signin">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg">
+                Sign in with Google
             </a>
         """, unsafe_allow_html=True)
     else:
         st.error("🚨 Failed to create Google login link.")
 
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Closing Tags
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 show_login_page()
+
+
 def logout():
     """Clear session state"""
     st.session_state.clear()
