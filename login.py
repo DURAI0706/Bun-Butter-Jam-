@@ -83,7 +83,10 @@ def get_google_auth_url():
 ALLOWED_USERS = {
     "durai.varshith@gmail.com",
     "vishwajith@student.tce.edu",
-    "duraisamy@student.tce.edu"
+    "duraisamy@student.tce.edu",
+    "pnandhini@student.tce.edu",
+    "sowmyashri@student.tce.edu",
+    "krithikaa@student.tce.edu"
 }
 
 def process_callback(auth_code):
@@ -134,38 +137,55 @@ def process_callback(auth_code):
 
 def show_login_page():
     """Render login interface and process login"""
-    st.title("🔐 Login to Coronation Bakery Dashboard")
-
-    # Handle redirect callback
-    if "code" in st.query_params:
-        with st.spinner("Authenticating..."):
-            user_info = process_callback(st.query_params["code"])
-            if user_info:
-                st.success(f"🎉 Welcome, {user_info.get('name', 'User')}!")
-                st.query_params.clear()
-                return True
-
-    # Show sign-in button
-    if not st.session_state.get("authenticated", False):
-        st.markdown("""
-        <div style='text-align: center; padding: 20px;'>
-            <h3>Please sign in with your Google account to continue</h3>
-        </div>
+    st.markdown("""
+    <style>
+        body {
+            background-color: #121212;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .login-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .login-card {
+            background: #1E1E1E;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        .login-button {
+            background-color: #ff4b4b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .google-button {
+            background-color: #4285F4;
+        }
+    </style>
+    <div class="login-container">
+        <div class="login-card">
+            <h3>Login to Coronation Bakery Dashboard</h3>
+    """, unsafe_allow_html=True)
+    
+    auth_url = get_google_auth_url()
+    if auth_url:
+        st.markdown(f"""
+        <a href="{auth_url}">
+            <button class="login-button google-button">Sign in with Google</button>
+        </a>
         """, unsafe_allow_html=True)
-
-        auth_url = get_google_auth_url()
-        if auth_url:
-            st.markdown(f"""
-                <a href="{auth_url}">
-                    <button style="background-color:#4285F4;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">
-                        Sign in with Google
-                    </button>
-                </a>
-            """, unsafe_allow_html=True)
-        else:
-            st.error("🚨 Failed to create Google login link.")
-
-    return st.session_state.get("authenticated", False)
+    else:
+        st.error("🚨 Failed to create Google login link.")
 
 def logout():
     """Clear session state"""
