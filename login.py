@@ -138,16 +138,16 @@ def process_callback(auth_code):
 import streamlit as st
 
 def show_login_page():
-    """Render login interface with Google Sign-in, matching reference design"""
-
+    """Render minimal login interface with Google Sign-in button"""
+    
     # Custom CSS for styling
     st.markdown(
         """
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-
+            @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap');
+            
             body {
-                font-family: 'Poppins', sans-serif;
+                font-family: 'Roboto', sans-serif;
                 background-color: #fff;
                 display: flex;
                 align-items: center;
@@ -155,43 +155,16 @@ def show_login_page():
                 height: 100vh;
                 margin: 0;
             }
-
+            
             .login-container {
-                display: flex;
-                width: 80%;
-                max-width: 1100px;
-                background-color: #fff;
-                border-radius: 10px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-                overflow: hidden;
+                text-align: center;
+                padding: 40px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                max-width: 400px;
+                width: 100%;
             }
-
-            /* Left Side Image */
-            .login-image {
-                width: 55%;
-                background: url('https://img.freepik.com/premium-vector/people-character-cook-cartoon-dessert-vector-illustration-flat-girl-boy-near-huge-sweet-food-concept-happy-tiny-person-have-fun-together_109722-4964.jpg') center/cover no-repeat;
-            }
-
-            /* Right Side Form */
-            .login-form {
-                width: 45%;
-                padding: 50px;
-                text-align: left;
-            }
-
-            .login-form h2 {
-                font-size: 28px;
-                font-weight: 700;
-                color: #4d2600;
-                margin-bottom: 10px;
-            }
-
-            .login-form p {
-                font-size: 14px;
-                color: #7a5c46;
-                margin-bottom: 20px;
-            }
-
+            
             /* Google Sign-in Button */
             .google-signin {
                 display: flex;
@@ -199,54 +172,37 @@ def show_login_page():
                 justify-content: center;
                 background-color: #4285F4;
                 color: white;
-                padding: 12px;
+                padding: 12px 24px;
                 border: none;
-                border-radius: 5px;
-                font-size: 18px;
+                border-radius: 4px;
+                font-size: 16px;
+                font-weight: 500;
                 cursor: pointer;
                 width: 100%;
                 text-decoration: none;
+                transition: background-color 0.3s;
             }
-
+            
             .google-signin img {
-                width: 24px;
-                height: 24px;
-                margin-right: 10px;
+                width: 20px;
+                height: 20px;
+                margin-right: 12px;
+                background-color: white;
+                padding: 4px;
+                border-radius: 2px;
             }
-
+            
             .google-signin:hover {
                 background-color: #357ae8;
-            }
-
-            /* Responsive Design */
-            @media (max-width: 900px) {
-                .login-container {
-                    flex-direction: column;
-                }
-                .login-image {
-                    width: 100%;
-                    height: 250px;
-                }
-                .login-form {
-                    width: 100%;
-                }
             }
         </style>
         """,
         unsafe_allow_html=True
     )
 
-    # Layout
+    # Main container
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
-
-    # Left Side (Image)
-    st.markdown('<div class="login-image"></div>', unsafe_allow_html=True)
-
-    # Right Side (Login Form)
-    st.markdown('<div class="login-form">', unsafe_allow_html=True)
-    st.markdown('<h2>🍰 Bakery Products</h2>', unsafe_allow_html=True)
-    st.markdown('<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>', unsafe_allow_html=True)
-
+    
     # Google Sign-in Button
     auth_url = get_google_auth_url()
     if auth_url:
@@ -257,14 +213,11 @@ def show_login_page():
             </a>
         """, unsafe_allow_html=True)
     else:
-        st.error("🚨 Failed to create Google login link.")
-
-    # Closing Tags
+        st.error("Failed to create Google login link.")
+    
+    # Closing tag
     st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-show_login_page()
-
+    
 
 def logout():
     """Clear session state"""
