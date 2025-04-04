@@ -188,6 +188,12 @@ def train_models_with_features(X, y, test_size, selected_models):
 def main():
     st.title("🧁 Coronation Bakery Sales Analytics")
 
+    # Initialize all required variables
+    results = None
+    models = None
+    X_test = None
+    y_test = None
+
     # File uploader
     uploaded_file = st.sidebar.file_uploader(
         "Upload your own dataset (optional)", type=["csv", "xlsx"]
