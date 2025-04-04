@@ -109,50 +109,12 @@ def logout():
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
+show_login_page()
 
-def show_login_page():
-    """Render login interface and process login"""
-    st.title("🔐 Login to Coronation Bakery Dashboard")
-
-    # Handle redirect callback
-    if "code" in st.query_params:
-        with st.spinner("Authenticating..."):
-            user_info = process_callback(st.query_params["code"])
-            if user_info:
-                st.success(f"🎉 Welcome, {user_info.get('name', 'User')}!")
-                st.query_params.clear()
-                return True
-
-    # Show sign-in button
-    if not st.session_state.get("authenticated", False):
-        st.markdown("""
-        <div style='text-align: center; padding: 20px;'>
-            <h3>Please sign in with your Google account to continue</h3>
-        </div>
-        """, unsafe_allow_html=True)
-
-        auth_url = get_google_auth_url()
-        if auth_url:
-            st.markdown(f"""
-                <a href="{auth_url}">
-                    <button style="background-color:#4285F4;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">
-                        Sign in with Google
-                    </button>
-                </a>
-            """, unsafe_allow_html=True)
-        else:
-            st.error("🚨 Failed to create Google login link.")
-
-    return st.session_state.get("authenticated", False)
-
-def logout():
-    """Clear session state"""
-    st.session_state.clear()
-
+# Get current user info
 def get_user_info():
-    """Get logged-in user's info"""
-    return st.session_state.get("user_info", None)
+    return st.session_state.get("user_info")
 
-# Ensure auth state is initialized
+# Initialize session state
 if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
+    st.session_state.authenticated = False
