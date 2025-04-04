@@ -137,39 +137,76 @@ def process_callback(auth_code):
 
 def show_login_page():
     """Render login interface and process login"""
-    st.title("🔐 Login to Coronation Bakery Dashboard")
+    st.markdown(
+        """
+        <style>
+            .login-container {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                background-color: #fff5e1;
+            }
+            .login-card {
+                background: white;
+                padding: 40px;
+                border-radius: 10px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                text-align: center;
+            }
+            .login-button {
+                background-color: #4285F4;
+                color: white;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+                font-size: 16px;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+            }
+            .login-button:hover {
+                background-color: #357ae8;
+            }
+            .header-title {
+                font-size: 24px;
+                font-weight: bold;
+                color: #6d4c41;
+                margin-bottom: 20px;
+            }
+            .google-logo {
+                width: 20px;
+                height: 20px;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-    # Handle redirect callback
-    if "code" in st.query_params:
-        with st.spinner("Authenticating..."):
-            user_info = process_callback(st.query_params["code"])
-            if user_info:
-                st.success(f"🎉 Welcome, {user_info.get('name', 'User')}!")
-                st.query_params.clear()
-                return True
+    st.markdown("<div class='login-container'>", unsafe_allow_html=True)
 
-    # Show sign-in button
-    if not st.session_state.get("authenticated", False):
-        st.markdown("""
-        <div style='text-align: center; padding: 20px;'>
-            <h3>Please sign in with your Google account to continue</h3>
-        </div>
+    st.markdown("<div class='login-card'>", unsafe_allow_html=True)
+    st.markdown("<div class='header-title'>🍰 Bakery Products</div>", unsafe_allow_html=True)
+    
+    auth_url = get_google_auth_url()
+    if auth_url:
+        st.markdown(f"""
+            <a href="{auth_url}">
+                <button class="login-button">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" class="google-logo">
+                    Sign in with Google
+                </button>
+            </a>
         """, unsafe_allow_html=True)
+    else:
+        st.error("🚨 Failed to create Google login link.")
 
-        auth_url = get_google_auth_url()
-        if auth_url:
-            st.markdown(f"""
-                <a href="{auth_url}">
-                    <button style="background-color:#4285F4;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">
-                        Sign in with Google
-                    </button>
-                </a>
-            """, unsafe_allow_html=True)
-        else:
-            st.error("🚨 Failed to create Google login link.")
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    return st.session_state.get("authenticated", False)
-
+show_login_page()
 def logout():
     """Clear session state"""
     st.session_state.clear()
