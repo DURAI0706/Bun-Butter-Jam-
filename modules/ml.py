@@ -11,43 +11,91 @@ from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.feature_selection import SelectKBest, f_regression
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+import os
+
+# Default dataset path
+DEFAULT_DATASET = "Coronation Bakery Dataset.csv"
 
 @st.cache_data
-def load_data():
-    df = pd.read_csv("Coronation Bakery Dataset.csv")
-    df['Date'] = pd.to_datetime(df['Date'])
+def load_default_data():
+    """Load the default dataset that comes with the app."""
+    try:
+        df = pd.read_csv(DEFAULT_DATASET)
+        return df
+    except FileNotFoundError:
+        st.error(f"Default dataset file '{DEFAULT_DATASET}' not found. Please upload your own dataset.")
+        return None
+
+@st.cache_data
+def load_data(uploaded_file=None):
+    """Load data either from uploaded file or default dataset."""
+    if uploaded_file is not None:
+        try:
+            df = pd.read_csv(uploaded_file)
+        except Exception as e:
+            st.error(f"Error reading uploaded file: {e}")
+            return None
+    else:
+        df = load_default_data()
+        if df is None:
+            return None
     
-    # Time-based features
-    df['Day'] = df['Date'].dt.day
-    df['Month'] = df['Date'].dt.month
-    df['Year'] = df['Date'].dt.year
-    df['DayOfWeek'] = df['Date'].dt.dayofweek
-    df['IsWeekend'] = (df['DayOfWeek'] >= 5).astype(int)
-    
-    # Lag features
-    df['Lag_1'] = df['Daily_Items_Sold'].shift(1).fillna(0)
-    df['Lag_7'] = df['Daily_Items_Sold'].shift(7).fillna(0)
-    df['Lag_30'] = df['Daily_Items_Sold'].shift(30).fillna(0)
-    
-    # Rolling features
-    df['Rolling_7'] = df['Daily_Items_Sold'].rolling(window=7, min_periods=1).mean()
-    df['Rolling_30'] = df['Daily_Items_Sold'].rolling(window=30, min_periods=1).mean()
-    
-    # EWMA
-    df['EWMA_7'] = df['Daily_Items_Sold'].ewm(span=7, min_periods=1).mean()
-    
-    df.drop(columns=['Date'], inplace=True)
-    df = df.dropna(subset=['Daily_Total', 'Daily_Items_Sold'])
-    
-    return df
+    # Data processing steps
+    try:
+        if 'Date' in df.columns:
+            df['Date'] = pd.to_datetime(df['Date'])
+            
+            # Time-based features
+            df['Day'] = df['Date'].dt.day
+            df['Month'] = df['Date'].dt.month
+            df['Year'] = df['Date'].dt.year
+            df['DayOfWeek'] = df['Date'].dt.dayofweek
+            df['IsWeekend'] = (df['DayOfWeek'] >= 5).astype(int)
+            
+            # Lag features
+            if 'Daily_Items_Sold' in df.columns:
+                df['Lag_1'] = df['Daily_Items_Sold'].shift(1).fillna(0)
+                df['Lag_7'] = df['Daily_Items_Sold'].shift(7).fillna(0)
+                df['Lag_30'] = df['Daily_Items_Sold'].shift(30).fillna(0)
+                
+                # Rolling features
+                df['Rolling_7'] = df['Daily_Items_Sold'].rolling(window=7, min_periods=1).mean()
+                df['Rolling_30'] = df['Daily_Items_Sold'].rolling(window=30, min_periods=1).mean()
+                
+                # EWMA
+                df['EWMA_7'] = df['Daily_Items_Sold'].ewm(span=7, min_periods=1).mean()
+            
+            df.drop(columns=['Date'], inplace=True)
+        
+        # Handle missing values for key columns
+        required_cols = ['Daily_Total', 'Daily_Items_Sold']
+        if all(col in df.columns for col in required_cols):
+            df = df.dropna(subset=required_cols)
+        else:
+            st.warning("Some expected columns not found in dataset. Analysis might be limited.")
+            
+        return df
+    except Exception as e:
+        st.error(f"Error processing data: {e}")
+        return None
 
 def get_valid_targets(df):
     """Returns list of valid target variables (excluding engineered features)"""
-    original_columns = ['Quantity', 'Price_Per_Unit', 'Total_Amount', 
+    if df is None:
+        return []
+    
+    # Common numeric columns that might be targets
+    potential_targets = ['Quantity', 'Price_Per_Unit', 'Total_Amount', 
                        'Daily_Total', 'Daily_Items_Sold']
-    return [col for col in original_columns if col in df.columns and df[col].dtype in ['int64', 'float64']]
+    
+    # Find which of these exist in the dataframe and are numeric
+    return [col for col in potential_targets 
+            if col in df.columns and df[col].dtype in ['int64', 'float64']]
 
 def preprocess_data(df, target_col):
+    if df is None or target_col not in df.columns:
+        return None
+    
     categorical_cols = [col for col in ['Seller_Name', 'Product_Type'] if col in df.columns]
     
     if categorical_cols:
@@ -60,6 +108,9 @@ def preprocess_data(df, target_col):
     return df
 
 def train_models(df, target_col, test_size, selected_models):
+    if df is None or target_col not in df.columns:
+        return None, None, None, None
+    
     engineered_features = ['Day', 'Month', 'Year', 'DayOfWeek', 'IsWeekend', 
                          'Lag_1', 'Lag_7', 'Lag_30', 'Rolling_7', 'Rolling_30', 'EWMA_7']
     
@@ -127,7 +178,9 @@ def train_models(df, target_col, test_size, selected_models):
 
 def train_models_with_features(X, y, test_size, selected_models):
     """Train models using only the selected features."""
-    
+    if X is None or y is None:
+        return None, None, None, None
+
     # Ensure X only contains selected features
     X = X[st.session_state.selected_features]
 
@@ -190,8 +243,21 @@ def main():
     if "selected_models" not in st.session_state:
         st.session_state.selected_models = ["Random Forest", "XGBoost"]
     
+    # Data upload section
+    st.sidebar.header("Data Configuration")
+    use_default_data = st.sidebar.checkbox("Use default dataset", value=True)
+    
+    uploaded_file = None
+    if not use_default_data:
+        uploaded_file = st.sidebar.file_uploader("Upload your own dataset (CSV)", type="csv")
+    
     # Load data
-    df = load_data()
+    df = load_data(uploaded_file)
+    
+    if df is None:
+        st.warning("No data loaded. Please upload a dataset or use the default one.")
+        return
+    
     original_df = df.copy()  # Keep a copy of the original data for additional visualizations
     
     # Configuration sidebar
@@ -199,10 +265,15 @@ def main():
         st.header("Model Configuration")
 
         # Step 1: Select target variable
+        valid_targets = get_valid_targets(df)
+        if not valid_targets:
+            st.error("No valid target variables found in the dataset.")
+            return
+            
         target_variable = st.selectbox(
             "1. Select Target Variable:",
-            options=get_valid_targets(df),
-            index=get_valid_targets(df).index('Daily_Total') if 'Daily_Total' in get_valid_targets(df) else 0
+            options=valid_targets,
+            index=valid_targets.index('Daily_Total') if 'Daily_Total' in valid_targets else 0
         )
 
         # Step 2: Test size selection
@@ -226,6 +297,10 @@ def main():
 
         # Get initial feature selection
         df_processed = preprocess_data(df, target_variable)
+        if df_processed is None:
+            st.error("Error in data preprocessing.")
+            return
+            
         X = df_processed.drop(columns=[target_variable])
         y = df_processed[target_variable]
 
@@ -266,6 +341,12 @@ def main():
     
     # Data Overview Section
     st.header("📊 Data Overview")
+    
+    # Show basic dataset info
+    st.subheader("Dataset Preview")
+    st.write(f"Dataset shape: {df.shape[0]} rows, {df.shape[1]} columns")
+    st.dataframe(df.head())
+    
     data_tabs = st.tabs(["Time Patterns", "Product Performance", "Seasonal Trends"])
     
     with data_tabs[0]:
@@ -354,6 +435,8 @@ def main():
                 color_continuous_scale='Blues'
             )
             st.plotly_chart(fig_product_bar, use_container_width=True)
+        else:
+            st.warning("Product_Type column not found in dataset.")
     
     with data_tabs[2]:
         st.subheader("Seasonal Analysis")
@@ -399,6 +482,8 @@ def main():
                 )
                 fig_quarter.update_traces(texttemplate='%{text:.2f}', textposition='outside')
                 st.plotly_chart(fig_quarter, use_container_width=True)
+        else:
+            st.warning("Month information not found in dataset.")
     
     # Model Analysis Section - Only run when button is clicked
     if run_button:
@@ -410,6 +495,10 @@ def main():
             with st.spinner("Preprocessing data..."):
                 # Use ONLY the user-selected features
                 df_processed = preprocess_data(df, target_variable)
+                if df_processed is None:
+                    st.error("Error in data preprocessing.")
+                    return
+                    
                 X = df_processed[st.session_state.selected_features]
                 y = df_processed[target_variable]
             
