@@ -83,7 +83,10 @@ def get_google_auth_url():
 ALLOWED_USERS = {
     "durai.varshith@gmail.com",
     "vishwajith@student.tce.edu",
-    "duraisamy@student.tce.edu"
+    "duraisamy@student.tce.edu",
+    "pnandhini@student.tce.edu",
+    "sowmyashri@student.tce.edu",
+    "krithikaa@student.tce.edu"
 }
 
 def process_callback(auth_code):
