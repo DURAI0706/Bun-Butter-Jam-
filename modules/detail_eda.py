@@ -46,7 +46,7 @@ def load_data(uploaded_file=None):
             else:
                 df = pd.read_excel(uploaded_file)
         else:
-            df = pd.read_csv("Coronation Bakery Dataset.csv")
+            df = pd.read_csv("Coronation Bakery Dataset.csv")  # Default dataset
         return df
     except Exception as e:
         st.error(f"Error loading file: {str(e)}")
@@ -801,40 +801,49 @@ def show_correlation_visualizations(df, col_types):
 def main():
     apply_dark_theme()
     st.title("📊 Detailed Exploratory Data Analysis")
+    
     uploaded_file = st.sidebar.file_uploader(
-        "Upload CSV or Excel file",
+        "Upload CSV or Excel file (optional, defaults to Coronation Bakery Dataset)",
         type=["csv", "xlsx", "xls"]
     )
-    
-    if uploaded_file is not None:
-        dataset_name = uploaded_file.name.split('.')[0].replace('_', ' ').title()    
-        df = load_data(uploaded_file)
-        if df is None:
-            return            
-        df = convert_to_datetime(df)
-        col_types = detect_column_types(df)
-        df = create_filters(df, col_types)
-        
-        st.sidebar.success(f"Loaded {len(df)} rows × {len(df.columns)} columns")
-        st.header(f"Dataset Overview: {dataset_name}")
-        
-        show_kpi_cards(generate_kpis(df, col_types))
-        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-            "📋 Preview", "🔍 Distributions", "📈 Time Series", 
-            "🧩 Missing Values", "📊 Correlations", "✨ Smart Visuals"
-        ])
-        
-        with tab1:
-            show_data_preview(df)
-        with tab2:
-            show_distributions(df, col_types)
-        with tab3:
-            show_time_series(df, col_types)
-        with tab4:
-            show_missing_values(df)
-        with tab5:
-            show_correlations(df, col_types)
-        with tab6:
-            show_correlation_visualizations(df, col_types)
+
+    # Load either the uploaded file or the default dataset
+    df = load_data(uploaded_file)
+    if df is None:
+        st.error("❌ Failed to load dataset.")
+        return
+
+    # Set dataset name
+    if uploaded_file:
+        dataset_name = uploaded_file.name.split('.')[0].replace('_', ' ').title()
+        st.sidebar.success(f"✅ Loaded file: {uploaded_file.name}")
     else:
-        st.info("Please upload a dataset to begin analysis")
+        dataset_name = "Coronation Bakery Dataset"
+        st.sidebar.info("📂 Using default: Coronation Bakery Dataset.csv")
+
+    # Continue with EDA
+    df = convert_to_datetime(df)
+    col_types = detect_column_types(df)
+    df = create_filters(df, col_types)
+
+    st.sidebar.success(f"✅ {len(df)} rows × {len(df.columns)} columns")
+    st.header(f"Dataset Overview: {dataset_name}")
+
+    show_kpi_cards(generate_kpis(df, col_types))
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📋 Preview", "🔍 Distributions", "📈 Time Series", 
+        "🧩 Missing Values", "📊 Correlations", "✨ Smart Visuals"
+    ])
+
+    with tab1:
+        show_data_preview(df)
+    with tab2:
+        show_distributions(df, col_types)
+    with tab3:
+        show_time_series(df, col_types)
+    with tab4:
+        show_missing_values(df)
+    with tab5:
+        show_correlations(df, col_types)
+    with tab6:
+        show_correlation_visualizations(df, col_types)
