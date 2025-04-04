@@ -65,7 +65,6 @@ def setup_google_auth():
         return flow
     except Exception as e:
         st.error(f"OAuth setup failed: {e}")
-        st.exception(e)
         return None
 
 def get_google_auth_url():
@@ -131,22 +130,19 @@ def process_callback(auth_code):
 
     except Exception as e:
         st.error(f"⚠️ Authentication failed: {e}")
-        st.exception(e)
         return None
 
 def show_login_page():
     """Render login interface and process login"""
     st.title("🔐 Login to Coronation Bakery Dashboard")
 
-    # Handle redirect callback using updated query param method
-    query_params = st.experimental_get_query_params()
-    if "code" in query_params:
+    # Handle redirect callback
+    if "code" in st.query_params:
         with st.spinner("Authenticating..."):
-            auth_code = query_params["code"][0]  # Get the code from list
-            user_info = process_callback(auth_code)
+            user_info = process_callback(st.query_params["code"])
             if user_info:
                 st.success(f"🎉 Welcome, {user_info.get('name', 'User')}!")
-                st.experimental_set_query_params()  # Clear query params
+                st.query_params.clear()
                 return True
 
     # Show sign-in button
