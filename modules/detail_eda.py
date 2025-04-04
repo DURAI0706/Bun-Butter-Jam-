@@ -699,20 +699,42 @@ def show_correlation_visualizations(df, col_types):
                 with adv_tabs[tab_idx]:
                     selected_metrics = st.multiselect("Select metrics to compare", num_cols, num_cols[:3])
                     if len(selected_metrics) >= 1:
-                        norm_df = df[selected_metrics].apply(lambda x: (x-x.min())/(x.max()-x.min()))
-                        if date_col:
-                            norm_df[date_col] = df[date_col]
-                            melt_df = norm_df.melt(id_vars=date_col, var_name='Metric', value_name='Value')
-                            fig = px.line(melt_df, x=date_col, y='Value', color='Metric',
-                                        title="Normalized Metric Comparison",
-                                        line_shape="spline")
-                        else:
-                            melt_df = norm_df.reset_index().melt(id_vars='index', var_name='Metric', value_name='Value')
-                            fig = px.line(melt_df, x='index', y='Value', color='Metric',
-                                        title="Normalized Metric Comparison")
-                        st.plotly_chart(fig, use_container_width=True, key="normalized_metrics_chart")
+                        norm_df = df[selected_metrics].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
+
+                        try:
+                            if date_col and date_col in df.columns:
+                                norm_df[date_col] = df[date_col]
+                                # Optional: convert to datetime if it looks like a date
+                                if "date" in date_col.lower() or "time" in date_col.lower():
+                                    norm_df[date_col] = pd.to_datetime(norm_df[date_col], errors="coerce")
+
+                                melt_df = norm_df.melt(id_vars=date_col, var_name='Metric', value_name='Value')
+                                fig = px.line(
+                                    melt_df,
+                                    x=date_col,
+                                    y='Value',
+                                    color='Metric',
+                                    title="Normalized Metric Comparison",
+                                    line_shape="spline"
+                                )
+                            else:
+                                melt_df = norm_df.reset_index().melt(id_vars='index', var_name='Metric', value_name='Value')
+                                fig = px.line(
+                                    melt_df,
+                                    x='index',
+                                    y='Value',
+                                    color='Metric',
+                                    title="Normalized Metric Comparison"
+                                )
+
+                            st.plotly_chart(fig, use_container_width=True, key="normalized_metrics_chart")
+
+                        except Exception as e:
+                            st.error(f"Error generating normalized metric comparison plot: {e}")
+                            st.dataframe(norm_df.head())  # Help with debugging
+
                 tab_idx += 1
-            
+
             # Time Decomposition
             if "Time Decomposition" in adv_tab_names:
                 with adv_tabs[tab_idx]:
