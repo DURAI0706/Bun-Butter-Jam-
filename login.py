@@ -150,19 +150,29 @@ def show_login_page():
     """Render login page and handle callback"""
     st.title("🔐 Login to Coronation Bakery Dashboard")
 
-    # Handle auth callback
-    if "code" in st.query_params:
+    query_params = st.query_params
+
+    # 1. If user just authenticated via callback code
+    if "code" in query_params:
         with st.spinner("Authenticating..."):
-            user_info = process_callback(st.query_params["code"])
+            user_info = process_callback(query_params["code"])
             if user_info:
                 st.success(f"🎉 Welcome, {user_info.get('name', 'User')}!")
+                # Set URL to show user is logged in
+                st.query_params.update({"auth": "true"})
                 return True
 
-    # Already authenticated? Continue
+    # 2. If already logged in via session state
     if st.session_state.get("authenticated", False):
         return True
 
-    # Show Google sign-in button
+    # 3. Reloaded, but URL shows auth=true → rehydrate session
+    if query_params.get("auth") == "true":
+        # Force session to believe user was logged in
+        st.session_state["authenticated"] = True
+        return True
+
+    # 4. Not authenticated at all → show login screen
     st.markdown("""
     <div style='text-align: center; padding: 20px;'>
         <h3>Please sign in with your Google account to continue</h3>
@@ -182,6 +192,7 @@ def show_login_page():
         st.error("🚨 Failed to create Google login link.")
 
     return False
+
 
 
 def logout():
