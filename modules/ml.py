@@ -294,19 +294,58 @@ def main():
         )
 
         # Step 5: Run Analysis
-        # Step 5: Run Analysis
         st.subheader("5. Run Analysis")
-        run_button = st.button("Run Models", type="primary")
         
-        if run_button:
-            best_model, feature_importance, selected_cols = train_models(x_train, y_train)
+        # Check if required data is available in session state
+        if 'df' in st.session_state and 'target_col' in st.session_state:
+            # Set default test size and models
+            test_size = 0.2
+            selected_models = ["Random Forest", "XGBoost", "Lasso", "SVR", "KNN"]
+            
+            run_button = st.button("Run Models", type="primary")
         
-            st.session_state.best_model = best_model
-            st.session_state.feature_importance = feature_importance
-            st.session_state.selected_cols = selected_cols
-            st.session_state.model_trained = True
+            if run_button:
+                # Check if we should use feature selection
+                if 'selected_features' in st.session_state:
+                    # Use the version with selected features
+                    results, best_models, X_test, y_test = train_models_with_features(
+                        st.session_state.df.drop(columns=[st.session_state.target_col]),
+                        st.session_state.df[st.session_state.target_col],
+                        test_size,
+                        selected_models
+                    )
+                else:
+                    # Use the full feature set version
+                    results, best_models, X_test, y_test = train_models(
+                        st.session_state.df,
+                        st.session_state.target_col,
+                        test_size,
+                        selected_models
+                    )
+                
+                # Store results in session state
+                st.session_state.results = results
+                st.session_state.best_models = best_models
+                st.session_state.X_test = X_test
+                st.session_state.y_test = y_test
+                st.session_state.model_trained = True
         
-            st.success("✅ Model training completed successfully!")
+                # Display success and results summary
+                st.success("✅ Model training completed successfully!")
+                
+                # Show performance metrics
+                st.subheader("Model Performance")
+                metrics_df = pd.DataFrame.from_dict({model: res for model, res in results.items()}, 
+                                                  orient='index')[['MSE', 'R2', 'MAE']]
+                st.dataframe(metrics_df.style.format("{:.4f}"))
+                
+                # Show best parameters
+                st.subheader("Best Parameters")
+                for model_name, model_results in results.items():
+                    st.write(f"**{model_name}**: {model_results['Best Params']}")
+                    
+        else:
+            st.warning("Please load data and set target column first.")
 
 
     
