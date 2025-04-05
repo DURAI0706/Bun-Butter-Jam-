@@ -6,9 +6,14 @@ import plotly.graph_objects as go
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.linear_model import LinearRegression, Lasso
+from sklearn.linear_model import Lasso, Ridge, ElasticNet
 from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
+from xgboost import XGBRegressor
+from lightgbm import LGBMRegressor
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from prophet import Prophet
 from sklearn.feature_selection import SelectKBest, f_regression
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
@@ -87,23 +92,98 @@ def train_models(df, target_col, test_size, selected_models):
     models_config = {
         "Random Forest": {
             "model": RandomForestRegressor(random_state=42),
-            "params": {"n_estimators": [50, 100, 200], "max_depth": [None, 10, 20]}
+            "params": {
+                "n_estimators": [50, 100, 200, 300],
+                "max_depth": [None, 5, 10, 20, 30],
+                "min_samples_split": [2, 5, 10],
+                "min_samples_leaf": [1, 2, 4],
+                "max_features": ['auto', 'sqrt']
+            }
         },
         "XGBoost": {
-            "model": GradientBoostingRegressor(random_state=42),
-            "params": {"n_estimators": [50, 100], "learning_rate": [0.01, 0.1]}
+            "model": XGBRegressor(random_state=42),
+            "params": {
+                "n_estimators": [50, 100, 200],
+                "learning_rate": [0.001, 0.01, 0.1],
+                "max_depth": [3, 6, 9],
+                "subsample": [0.6, 0.8, 1.0],
+                "colsample_bytree": [0.6, 0.8, 1.0]
+            }
+        },
+        "LightGBM": {
+            "model": LGBMRegressor(random_state=42),
+            "params": {
+                "n_estimators": [50, 100, 200],
+                "learning_rate": [0.01, 0.1],
+                "num_leaves": [31, 50, 100],
+                "max_depth": [-1, 10, 20],
+                "min_child_samples": [5, 10, 20]
+            }
         },
         "Lasso": {
             "model": Lasso(random_state=42),
-            "params": {"alpha": [0.01, 0.1, 1]}
+            "params": {
+                "alpha": [0.0001, 0.001, 0.01, 0.1, 1],
+                "selection": ['cyclic', 'random'],
+                "max_iter": [1000, 5000]
+            }
+        },
+        "Ridge": {
+            "model": Ridge(random_state=42),
+            "params": {
+                "alpha": [0.0001, 0.001, 0.01, 0.1, 1, 10],
+                "solver": ['auto', 'svd', 'cholesky', 'lsqr']
+            }
+        },
+        "ElasticNet": {
+            "model": ElasticNet(random_state=42),
+            "params": {
+                "alpha": [0.0001, 0.001, 0.01, 0.1, 1],
+                "l1_ratio": [0.1, 0.3, 0.5, 0.7, 0.9],
+                "selection": ['cyclic', 'random']
+            }
         },
         "SVR": {
             "model": SVR(),
-            "params": {"C": [0.1, 1, 10], "kernel": ['linear', 'rbf']}
+            "params": {
+                "C": [0.1, 1, 10, 100],
+                "kernel": ['linear', 'rbf', 'poly'],
+                "gamma": ['scale', 'auto'],
+                "epsilon": [0.01, 0.1, 0.5]
+            }
         },
         "KNN": {
             "model": KNeighborsRegressor(),
-            "params": {"n_neighbors": [3, 5, 10]}
+            "params": {
+                "n_neighbors": [3, 5, 7, 10, 15],
+                "weights": ['uniform', 'distance'],
+                "algorithm": ['auto', 'ball_tree', 'kd_tree', 'brute'],
+                "leaf_size": [10, 30, 50]
+            }
+        },
+        "ARIMA": {
+            "model": ARIMA,
+            "params": {
+                "order": [(1, 0, 0), (1, 1, 0), (0, 1, 1), (1, 1, 1), (2, 1, 1)],
+                "trend": ['n', 'c', 't', 'ct']
+            }
+        },
+        "SARIMAX": {
+            "model": SARIMAX,
+            "params": {
+                "order": [(1, 0, 0), (1, 1, 0), (0, 1, 1), (1, 1, 1)],
+                "seasonal_order": [(0, 0, 0, 0), (1, 0, 0, 12), (0, 1, 0, 12)],
+                "trend": ['n', 'c', 't', 'ct']
+            }
+        },
+        "Prophet": {
+            "model": Prophet,
+            "params": {
+                "growth": ['linear', 'logistic'],
+                "seasonality_mode": ['additive', 'multiplicative'],
+                "changepoint_prior_scale": [0.01, 0.1, 0.5],
+                "seasonality_prior_scale": [0.01, 0.1, 1.0, 10.0]
+            }
         }
     }
     
@@ -150,13 +230,102 @@ def train_models_with_features(X, y, test_size, selected_models):
     X_test = scaler.transform(X_test)
 
     models_config = {
-        "Random Forest": {"model": RandomForestRegressor(random_state=42), "params": {"n_estimators": [50, 100, 200], "max_depth": [None, 10, 20]}},
-        "XGBoost": {"model": GradientBoostingRegressor(random_state=42), "params": {"n_estimators": [50, 100], "learning_rate": [0.01, 0.1]}},
-        "Lasso": {"model": Lasso(random_state=42), "params": {"alpha": [0.01, 0.1, 1]}},
-        "SVR": {"model": SVR(), "params": {"C": [0.1, 1, 10], "kernel": ['linear', 'rbf']}},
-        "KNN": {"model": KNeighborsRegressor(), "params": {"n_neighbors": [3, 5, 10]}}
+        "Random Forest": {
+            "model": RandomForestRegressor(random_state=42),
+            "params": {
+                "n_estimators": [50, 100, 200, 300],
+                "max_depth": [None, 5, 10, 20, 30],
+                "min_samples_split": [2, 5, 10],
+                "min_samples_leaf": [1, 2, 4],
+                "max_features": ['auto', 'sqrt']
+            }
+        },
+        "XGBoost": {
+            "model": XGBRegressor(random_state=42),
+            "params": {
+                "n_estimators": [50, 100, 200],
+                "learning_rate": [0.001, 0.01, 0.1],
+                "max_depth": [3, 6, 9],
+                "subsample": [0.6, 0.8, 1.0],
+                "colsample_bytree": [0.6, 0.8, 1.0]
+            }
+        },
+        "LightGBM": {
+            "model": LGBMRegressor(random_state=42),
+            "params": {
+                "n_estimators": [50, 100, 200],
+                "learning_rate": [0.01, 0.1],
+                "num_leaves": [31, 50, 100],
+                "max_depth": [-1, 10, 20],
+                "min_child_samples": [5, 10, 20]
+            }
+        },
+        "Lasso": {
+            "model": Lasso(random_state=42),
+            "params": {
+                "alpha": [0.0001, 0.001, 0.01, 0.1, 1],
+                "selection": ['cyclic', 'random'],
+                "max_iter": [1000, 5000]
+            }
+        },
+        "Ridge": {
+            "model": Ridge(random_state=42),
+            "params": {
+                "alpha": [0.0001, 0.001, 0.01, 0.1, 1, 10],
+                "solver": ['auto', 'svd', 'cholesky', 'lsqr']
+            }
+        },
+        "ElasticNet": {
+            "model": ElasticNet(random_state=42),
+            "params": {
+                "alpha": [0.0001, 0.001, 0.01, 0.1, 1],
+                "l1_ratio": [0.1, 0.3, 0.5, 0.7, 0.9],
+                "selection": ['cyclic', 'random']
+            }
+        },
+        "SVR": {
+            "model": SVR(),
+            "params": {
+                "C": [0.1, 1, 10, 100],
+                "kernel": ['linear', 'rbf', 'poly'],
+                "gamma": ['scale', 'auto'],
+                "epsilon": [0.01, 0.1, 0.5]
+            }
+        },
+        "KNN": {
+            "model": KNeighborsRegressor(),
+            "params": {
+                "n_neighbors": [3, 5, 7, 10, 15],
+                "weights": ['uniform', 'distance'],
+                "algorithm": ['auto', 'ball_tree', 'kd_tree', 'brute'],
+                "leaf_size": [10, 30, 50]
+            }
+        },
+        "ARIMA": {
+            "model": ARIMA,
+            "params": {
+                "order": [(1, 0, 0), (1, 1, 0), (0, 1, 1), (1, 1, 1), (2, 1, 1)],
+                "trend": ['n', 'c', 't', 'ct']
+            }
+        },
+        "SARIMAX": {
+            "model": SARIMAX,
+            "params": {
+                "order": [(1, 0, 0), (1, 1, 0), (0, 1, 1), (1, 1, 1)],
+                "seasonal_order": [(0, 0, 0, 0), (1, 0, 0, 12), (0, 1, 0, 12)],
+                "trend": ['n', 'c', 't', 'ct']
+            }
+        },
+        "Prophet": {
+            "model": Prophet,
+            "params": {
+                "growth": ['linear', 'logistic'],
+                "seasonality_mode": ['additive', 'multiplicative'],
+                "changepoint_prior_scale": [0.01, 0.1, 0.5],
+                "seasonality_prior_scale": [0.01, 0.1, 1.0, 10.0]
+            }
+        }
     }
-
     results = {}
     best_models = {}
 
@@ -277,16 +446,38 @@ def main():
 
         # Update the session state with user's selection
         st.session_state.selected_features = selected_features
+
         # Step 4: Model selection
         st.subheader("4. Select Models")
 
-        model_options = ["Random Forest", "XGBoost", "Lasso", "SVR", "KNN"]
-        st.session_state.selected_models = st.multiselect(
-            "Choose models to run:",
-            options=model_options,
-            default=st.session_state.selected_models
-        )
+        # Define model groups
+        model_groups = {
+            "Tree-Based Models": ["Random Forest", "XGBoost", "LightGBM"],
+            "Linear Models": ["Lasso", "Ridge Regression", "Elastic Net"],
+            "Non-Linear Models": ["SVR", "KNN"],
+            "Time Series Models": ["ARIMA", "SARIMAX", "Prophet"]
+        }
 
+        # Create expandable sections for each group
+        selected_models = []
+        for group_name, models in model_groups.items():
+            with st.expander(f"{group_name} ({len(models)})", expanded=True):
+                group_selections = st.multiselect(
+                    f"Select {group_name}:",
+                    options=models,
+                    default=[m for m in st.session_state.selected_models if m in models],
+                    key=f"multiselect_{group_name}"
+                )
+                selected_models.extend(group_selections)
+
+        st.session_state.selected_models = selected_models
+
+        # Display current selections
+        if st.session_state.selected_models:
+            st.markdown("**Selected Models:** " + ", ".join(st.session_state.selected_models))
+        else:
+            st.warning("Please select at least one model")
+            
         # Step 5: Run Analysis
         st.subheader("5. Run Analysis")
         run_button = st.button("Run Models", type="primary")
