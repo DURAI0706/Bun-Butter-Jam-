@@ -294,20 +294,20 @@ def main():
         )
 
         # Step 5: Run Analysis
+        # Step 5: Run Analysis
         st.subheader("5. Run Analysis")
         run_button = st.button("Run Models", type="primary")
         
-        # Train the model only when the button is clicked
         if run_button:
             best_model, feature_importance, selected_cols = train_models(X_train, y_train)
         
-            # Store in session state to persist after rerun
             st.session_state.best_model = best_model
             st.session_state.feature_importance = feature_importance
             st.session_state.selected_cols = selected_cols
             st.session_state.model_trained = True
         
             st.success("✅ Model training completed successfully!")
+
 
     
     # Data Overview Section
