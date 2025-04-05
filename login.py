@@ -135,9 +135,8 @@ def process_callback(auth_code):
 def show_login_page():
     st.title("🔐 Login to Coronation Bakery Dashboard")
 
-    # Restore session after refresh using query param
-    if st.query_params.get("logged_in") == "true" and not st.session_state.get("authenticated", False):
-        st.session_state.authenticated = True
+    # Already authenticated — no need to login again
+    if st.session_state.get("authenticated", False):
         return True
 
     # Handle redirect callback
@@ -146,28 +145,30 @@ def show_login_page():
             user_info = process_callback(st.query_params["code"])
             if user_info:
                 st.success(f"🎉 Welcome, {user_info.get('name', 'User')}!")
+                # ✅ No need to set query param or clear here — rerun handles it
+                st.rerun()
                 return True
 
-    if not st.session_state.get("authenticated", False):
-        st.markdown("""
-        <div style='text-align: center; padding: 20px;'>
-            <h3>Please sign in with your Google account to continue</h3>
-        </div>
+    # Show sign-in page
+    st.markdown("""
+    <div style='text-align: center; padding: 20px;'>
+        <h3>Please sign in with your Google account to continue</h3>
+    </div>
+    """, unsafe_allow_html=True)
+
+    auth_url = get_google_auth_url()
+    if auth_url:
+        st.markdown(f"""
+            <a href="{auth_url}">
+                <button style="background-color:#4285F4;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">
+                    Sign in with Google
+                </button>
+            </a>
         """, unsafe_allow_html=True)
+    else:
+        st.error("🚨 Failed to create Google login link.")
 
-        auth_url = get_google_auth_url()
-        if auth_url:
-            st.markdown(f"""
-                <a href="{auth_url}">
-                    <button style="background-color:#4285F4;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">
-                        Sign in with Google
-                    </button>
-                </a>
-            """, unsafe_allow_html=True)
-        else:
-            st.error("🚨 Failed to create Google login link.")
-
-    return st.session_state.get("authenticated", False)
+    return False  # Not yet authenticated
 
 def logout():
     st.session_state.clear()
