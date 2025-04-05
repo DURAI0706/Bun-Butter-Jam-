@@ -801,16 +801,13 @@ def show_correlation_visualizations(df, col_types):
 def main():
     apply_dark_theme()
     
-    # Get current query parameters
-    query_params = st.experimental_get_query_params()
-    
     # Set default tab
     tabs = ["📋 Preview", "🔍 Distributions", "📈 Time Series", 
            "🧩 Missing Values", "📊 Correlations", "✨ Smart Visuals"]
     default_tab = tabs[0]
     
     # Get current tab from query params
-    current_tab = query_params.get("tab", [default_tab])[0]
+    current_tab = st.query_params.get("tab", [default_tab])[0]
     if current_tab not in tabs:
         current_tab = default_tab
     
@@ -856,8 +853,8 @@ def main():
     
     # Update query params if tab changed
     if selected_tab != current_tab:
-        st.experimental_set_query_params(tab=selected_tab)
-        st.experimental_rerun()
+        st.query_params["tab"] = selected_tab
+        st.rerun()
     
     # Show the selected tab content
     if selected_tab == "📋 Preview":
