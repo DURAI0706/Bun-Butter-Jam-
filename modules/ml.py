@@ -299,7 +299,7 @@ def main():
         run_button = st.button("Run Models", type="primary")
         
         if run_button:
-            best_model, feature_importance, selected_cols = train_models(X_train, y_train)
+            best_model, feature_importance, selected_cols = train_models(x_train, y_train)
         
             st.session_state.best_model = best_model
             st.session_state.feature_importance = feature_importance
