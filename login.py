@@ -7,9 +7,8 @@ from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
 from pip._vendor import cachecontrol
 import google.auth.transport.requests
-import time
 
-# Read config from Streamlit secrets
+# --- CONFIGURATION ---
 GOOGLE_CLIENT_ID = st.secrets["GOOGLE_CLIENT_ID"]
 GOOGLE_CLIENT_SECRET = st.secrets["GOOGLE_CLIENT_SECRET"]
 REDIRECT_URI = st.secrets["REDIRECT_URI"]
@@ -23,12 +22,27 @@ AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 USER_INFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
 
+# Enable insecure transport for local development
 if st.secrets.get("environment") == "local":
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
+# Temporary client secret file
 CLIENT_SECRET_FILE = os.path.join(pathlib.Path(__file__).parent, "client_secret.json")
 
+# --- Allowed users ---
+ALLOWED_USERS = {
+    "durai.varshith@gmail.com",
+    "vishwajith@student.tce.edu",
+    "duraisamy@student.tce.edu",
+    "pnandhini@student.tce.edu",
+    "sowmyashri@student.tce.edu",
+    "krithikaa@student.tce.edu"
+}
+
+
+# --- HELPER FUNCTIONS ---
 def create_client_secret_file():
+    """Create a client secret file dynamically from secrets"""
     client_config = {
         "web": {
             "client_id": GOOGLE_CLIENT_ID,
@@ -48,7 +62,9 @@ def create_client_secret_file():
         st.error(f"Error creating client_secret.json: {e}")
         return False
 
+
 def setup_google_auth():
+    """Initialize Google OAuth flow"""
     if not os.path.exists(CLIENT_SECRET_FILE):
         if not create_client_secret_file():
             return None
@@ -63,7 +79,9 @@ def setup_google_auth():
         st.error(f"OAuth setup failed: {e}")
         return None
 
+
 def get_google_auth_url():
+    """Generate Google login URL"""
     flow = setup_google_auth()
     if not flow:
         return None
@@ -74,20 +92,12 @@ def get_google_auth_url():
     )
     return auth_url
 
-ALLOWED_USERS = {
-    "durai.varshith@gmail.com",
-    "vishwajith@student.tce.edu",
-    "duraisamy@student.tce.edu",
-    "pnandhini@student.tce.edu",
-    "sowmyashri@student.tce.edu",
-    "krithikaa@student.tce.edu"
-}
 
 def process_callback(auth_code):
+    """Handle redirect callback and authenticate user"""
     flow = setup_google_auth()
     if not flow:
         return None
-
     try:
         flow.fetch_token(code=auth_code)
         credentials = flow.credentials
@@ -103,15 +113,18 @@ def process_callback(auth_code):
             clock_skew_in_seconds=10
         )
 
+        # Get user info
         headers = {'Authorization': f'Bearer {credentials.token}'}
         response = requests.get(USER_INFO_URL, headers=headers)
         user_info = response.json()
-
         user_email = user_info.get("email", "").lower()
+
+        # Check if user is allowed
         if user_email not in ALLOWED_USERS:
             st.error("❌ Access denied. Unauthorized email.")
             return None
 
+        # Save session state
         st.session_state.update({
             "authenticated": True,
             "user_info": user_info,
@@ -123,33 +136,33 @@ def process_callback(auth_code):
             }
         })
 
-        # ✅ Clear query params using st.query_params
+        # Clear auth code from URL
         st.query_params.clear()
-
         return user_info
 
     except Exception as e:
         st.error(f"⚠️ Authentication failed: {e}")
         return None
 
- def show_login_page():
+
+# --- LOGIN UI ---
+def show_login_page():
+    """Render login page and handle callback"""
     st.title("🔐 Login to Coronation Bakery Dashboard")
 
-    # Already authenticated — no need to login again
-    if st.session_state.get("authenticated", False):
-        return True
-
-    # Handle redirect callback
+    # Handle auth callback
     if "code" in st.query_params:
         with st.spinner("Authenticating..."):
             user_info = process_callback(st.query_params["code"])
             if user_info:
                 st.success(f"🎉 Welcome, {user_info.get('name', 'User')}!")
-                # ✅ No need to set query param or clear here — rerun handles it
-                st.rerun()
                 return True
 
-    # Show sign-in page
+    # Already authenticated? Continue
+    if st.session_state.get("authenticated", False):
+        return True
+
+    # Show Google sign-in button
     st.markdown("""
     <div style='text-align: center; padding: 20px;'>
         <h3>Please sign in with your Google account to continue</h3>
@@ -168,15 +181,20 @@ def process_callback(auth_code):
     else:
         st.error("🚨 Failed to create Google login link.")
 
-    return False  # Not yet authenticated
+    return False
+
 
 def logout():
+    """Log the user out"""
     st.session_state.clear()
-    st.query_params.clear() 
-    
+    st.query_params.clear()
+
+
 def get_user_info():
+    """Get logged-in user's profile info"""
     return st.session_state.get("user_info", None)
 
-# Ensure auth state is initialized
+
+# Ensure state is initialized
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
