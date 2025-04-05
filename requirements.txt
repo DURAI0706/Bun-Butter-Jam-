@@ -8,3 +8,6 @@ plotly==5.18.0
 scikit-learn==1.4.0
 statsmodels==0.14.1
 streamlit-extras==0.3.0
+xgboost==2.0.3
+lightgbm==4.1.0
+prophet==1.1.5
