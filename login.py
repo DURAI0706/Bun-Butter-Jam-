@@ -123,8 +123,8 @@ def process_callback(auth_code):
             }
         })
 
+        # ✅ Clear query params using st.query_params
         st.query_params.clear()
-        st.experimental_set_query_params(logged_in="true")
 
         return user_info
 
@@ -132,7 +132,7 @@ def process_callback(auth_code):
         st.error(f"⚠️ Authentication failed: {e}")
         return None
 
-def show_login_page():
+ def show_login_page():
     st.title("🔐 Login to Coronation Bakery Dashboard")
 
     # Already authenticated — no need to login again
@@ -172,8 +172,8 @@ def show_login_page():
 
 def logout():
     st.session_state.clear()
-    st.experimental_set_query_params()
-
+    st.query_params.clear() 
+    
 def get_user_info():
     return st.session_state.get("user_info", None)
 
