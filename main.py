@@ -1,23 +1,22 @@
 import streamlit as st
 from login import show_login_page, logout
-from modules.navigation import main as navigation_main  # Replace with your actual main function
+from modules.navigation import main as navigation_main
 
 st.set_page_config(page_title="🧁 Coronation Bakery Sales Analytics", layout="wide")
 
 def main():
-    # Initialize auth state once
+    # Ensure session state key exists
     if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
+        st.session_state["authenticated"] = False
 
-    # If not logged in, show login page
-    if not st.session_state.authenticated:
-        authenticated = show_login_page()
-        if authenticated:
-            st.session_state.authenticated = True
-            st.rerun()  # This ensures after login, we reload properly
+    # If not logged in, show login
+    if not st.session_state["authenticated"]:
+        if show_login_page():
+            st.session_state["authenticated"] = True
+            st.rerun()
         return
 
-    # If already authenticated, stay on main page
+    # Logged in, show dashboard
     st.sidebar.button("Logout", on_click=logout)
     navigation_main()
 
