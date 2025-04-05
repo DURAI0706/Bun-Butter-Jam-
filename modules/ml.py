@@ -269,7 +269,7 @@ def main():
             st.session_state.prev_num_features = num_features
 
         # Feature selection multiselect
-        columns_list = features.columns.tolist()
+        columns_list = X.columns.tolist()
         selected_features = st.multiselect(
             "Select features for training",
             options=columns_list,
