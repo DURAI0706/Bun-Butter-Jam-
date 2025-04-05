@@ -7,6 +7,7 @@ from google.oauth2 import id_token
 from google_auth_oauthlib.flow import Flow
 from pip._vendor import cachecontrol
 import google.auth.transport.requests
+import time
 
 # Read config from Streamlit secrets
 GOOGLE_CLIENT_ID = st.secrets["GOOGLE_CLIENT_ID"]
@@ -22,15 +23,12 @@ AUTH_URL = "https://accounts.google.com/o/oauth2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 USER_INFO_URL = "https://www.googleapis.com/oauth2/v1/userinfo"
 
-# Enable insecure transport for local testing
 if st.secrets.get("environment") == "local":
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
-# Path to temporary client secret file
 CLIENT_SECRET_FILE = os.path.join(pathlib.Path(__file__).parent, "client_secret.json")
 
 def create_client_secret_file():
-    """Create Google client secret file dynamically"""
     client_config = {
         "web": {
             "client_id": GOOGLE_CLIENT_ID,
@@ -51,11 +49,9 @@ def create_client_secret_file():
         return False
 
 def setup_google_auth():
-    """Initialize Google OAuth flow"""
     if not os.path.exists(CLIENT_SECRET_FILE):
         if not create_client_secret_file():
             return None
-
     try:
         flow = Flow.from_client_secrets_file(
             CLIENT_SECRET_FILE,
@@ -68,7 +64,6 @@ def setup_google_auth():
         return None
 
 def get_google_auth_url():
-    """Generate login URL"""
     flow = setup_google_auth()
     if not flow:
         return None
@@ -79,7 +74,6 @@ def get_google_auth_url():
     )
     return auth_url
 
-# List of authorized users
 ALLOWED_USERS = {
     "durai.varshith@gmail.com",
     "vishwajith@student.tce.edu",
@@ -90,7 +84,6 @@ ALLOWED_USERS = {
 }
 
 def process_callback(auth_code):
-    """Handle the callback and fetch user info"""
     flow = setup_google_auth()
     if not flow:
         return None
@@ -129,6 +122,10 @@ def process_callback(auth_code):
                 'expiry': credentials.expiry.isoformat() if credentials.expiry else None
             }
         })
+
+        st.query_params.clear()
+        st.experimental_set_query_params(logged_in="true")
+
         return user_info
 
     except Exception as e:
@@ -136,8 +133,12 @@ def process_callback(auth_code):
         return None
 
 def show_login_page():
-    """Render login interface and process login"""
     st.title("🔐 Login to Coronation Bakery Dashboard")
+
+    # Restore session after refresh using query param
+    if st.query_params.get("logged_in") == "true" and not st.session_state.get("authenticated", False):
+        st.session_state.authenticated = True
+        return True
 
     # Handle redirect callback
     if "code" in st.query_params:
@@ -145,10 +146,8 @@ def show_login_page():
             user_info = process_callback(st.query_params["code"])
             if user_info:
                 st.success(f"🎉 Welcome, {user_info.get('name', 'User')}!")
-                st.query_params.clear()
                 return True
 
-    # Show sign-in button
     if not st.session_state.get("authenticated", False):
         st.markdown("""
         <div style='text-align: center; padding: 20px;'>
@@ -171,11 +170,10 @@ def show_login_page():
     return st.session_state.get("authenticated", False)
 
 def logout():
-    """Clear session state"""
     st.session_state.clear()
+    st.experimental_set_query_params()
 
 def get_user_info():
-    """Get logged-in user's info"""
     return st.session_state.get("user_info", None)
 
 # Ensure auth state is initialized
