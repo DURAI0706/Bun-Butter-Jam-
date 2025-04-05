@@ -269,11 +269,16 @@ def main():
             st.session_state.prev_num_features = num_features
 
         # Feature selection multiselect
-        columns_list = X.columns.tolist()
+        selector = SelectKBest(score_func=f_classif, k=num_features)
+        selector.fit(X, y)
+        selected_mask = selector.get_support()
+        top_features = X.columns[selected_mask].tolist()
+        
+        # Now show multiselect for the top features
         selected_features = st.multiselect(
             "Select features for training",
-            options=columns_list,
-            default=columns_list if columns_list else None
+            options=top_features,
+            default=top_features
         )
 
         # Update the session state with user's selection
