@@ -800,17 +800,6 @@ def show_correlation_visualizations(df, col_types):
 
 def main():
     apply_dark_theme()
-    
-    # Set default tab
-    tabs = ["📋 Preview", "🔍 Distributions", "📈 Time Series", 
-           "🧩 Missing Values", "📊 Correlations", "✨ Smart Visuals"]
-    default_tab = tabs[0]
-    
-    # Get current tab from query params
-    current_tab = st.query_params.get("tab", [default_tab])[0]
-    if current_tab not in tabs:
-        current_tab = default_tab
-    
     st.title("📊 Detailed Exploratory Data Analysis")
     
     uploaded_file = st.sidebar.file_uploader(
@@ -841,31 +830,20 @@ def main():
     st.header(f"Dataset Overview: {dataset_name}")
 
     show_kpi_cards(generate_kpis(df, col_types))
-    
-    # Create tabs navigation
-    selected_tab = st.radio(
-        "Navigation",
-        tabs,
-        index=tabs.index(current_tab),
-        horizontal=True,
-        label_visibility="hidden"
-    )
-    
-    # Update query params if tab changed
-    if selected_tab != current_tab:
-        st.query_params["tab"] = selected_tab
-        st.rerun()
-    
-    # Show the selected tab content
-    if selected_tab == "📋 Preview":
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📋 Preview", "🔍 Distributions", "📈 Time Series", 
+        "🧩 Missing Values", "📊 Correlations", "✨ Smart Visuals"
+    ])
+
+    with tab1:
         show_data_preview(df)
-    elif selected_tab == "🔍 Distributions":
+    with tab2:
         show_distributions(df, col_types)
-    elif selected_tab == "📈 Time Series":
+    with tab3:
         show_time_series(df, col_types)
-    elif selected_tab == "🧩 Missing Values":
+    with tab4:
         show_missing_values(df)
-    elif selected_tab == "📊 Correlations":
+    with tab5:
         show_correlations(df, col_types)
-    elif selected_tab == "✨ Smart Visuals":
+    with tab6:
         show_correlation_visualizations(df, col_types)
