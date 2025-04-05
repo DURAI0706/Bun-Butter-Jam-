@@ -269,12 +269,10 @@ def main():
             st.session_state.prev_num_features = num_features
 
         # Feature selection multiselect
-        columns_list = features.columns.tolist()
         selected_features = st.multiselect(
-            "Select features for training",
-            options=columns_list,
-            default=columns_list if columns_list else None
+            "Select features for training", options=features.columns.tolist(), default=list(features.columns)
         )
+
 
 
         # Update the session state with user's selection
