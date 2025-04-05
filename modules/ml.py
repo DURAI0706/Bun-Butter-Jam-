@@ -296,6 +296,19 @@ def main():
         # Step 5: Run Analysis
         st.subheader("5. Run Analysis")
         run_button = st.button("Run Models", type="primary")
+        
+        # Train the model only when the button is clicked
+        if run_button:
+            best_model, feature_importance, selected_cols = train_models(X_train, y_train)
+        
+            # Store in session state to persist after rerun
+            st.session_state.best_model = best_model
+            st.session_state.feature_importance = feature_importance
+            st.session_state.selected_cols = selected_cols
+            st.session_state.model_trained = True
+        
+            st.success("✅ Model training completed successfully!")
+
     
     # Data Overview Section
     st.header("📊 Data Overview")
@@ -683,33 +696,37 @@ def main():
                         st.warning(f"Could not display feature importance: {str(e)}")
                 
                 # Bivariate analysis
-                st.subheader("Bivariate Analysis")
+                if st.session_state.get("model_trained", False):
+                    st.subheader("Bivariate Analysis")
                 
-                # Select top 5 most important features for bivariate analysis
-                if hasattr(best_model, 'feature_importances_'):
-                    top_features = feature_importance.head(5)['Feature'].tolist()
+                    best_model = st.session_state.best_model
+                    feature_importance = st.session_state.feature_importance
+                    selected_cols = st.session_state.selected_cols
+                
+                    # Select top 5 most important features
+                    if hasattr(best_model, 'feature_importances_'):
+                        top_features = feature_importance.head(5)['Feature'].tolist()
+                    else:
+                        top_features = [col for col in selected_cols if col != target_variable][:5]
+                
+                    selected_feature = st.selectbox(
+                        "Select feature for detailed analysis:",
+                        options=top_features,
+                        key="bivariate_feature"
+                    )
+                
+                    # Scatter plot
+                    fig_scatter = px.scatter(
+                        df_processed,
+                        x=selected_feature,
+                        y=target_variable,
+                        title=f'{selected_feature} vs {target_variable}',
+                        trendline='ols',
+                        opacity=0.6
+                    )
+                    st.plotly_chart(fig_scatter, use_container_width=True)
                 else:
-                    # If feature importance isn't available, use correlation
-                    top_features = [col for col in selected_cols if col != target_variable][:5]
-                
-                selected_feature = st.selectbox(
-                    "Select feature for detailed analysis:",
-                    options=top_features
-                )
-                
-                # Scatter plot of selected feature vs target
-                fig_scatter = px.scatter(
-                    df_processed,
-                    x=selected_feature,
-                    y=target_variable,
-                    title=f'{selected_feature} vs {target_variable}',
-                    trendline='ols',
-                    opacity=0.6
-                )
-                st.plotly_chart(fig_scatter, use_container_width=True)
-    else:
-        st.info("Configure your models and click 'Run Models' to see results")
+                    st.info("Configure your models and click 'Run Models' to see results")
 
-        
 if __name__ == "__main__":
     main()
