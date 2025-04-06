@@ -268,25 +268,38 @@ def main():
     
     # File uploader
     uploaded_file = st.sidebar.file_uploader(
-        "Upload your own dataset (optional)", type=["csv", "xlsx"]
+        "Upload your own dataset (optional)", 
+        type=["csv", "xlsx"],
+        help="Upload your bakery sales data in CSV or Excel format"
     )
     
-    # Load data
-    df = load_data(uploaded_file)
-    if df is None:
+    # Load data with error handling
+    try:
+        df = load_data(uploaded_file)
+        if df is None:
+            st.error("Failed to load data. Please check your file format.")
+            return
+    except Exception as e:
+        st.error(f"Error loading data: {str(e)}")
         return
     
     original_df = df.copy()
     
     # Configuration sidebar
     with st.sidebar:
-        st.header("Model Configuration")
+        st.header("⚙️ Model Configuration")
         
         # Step 1: Select target variable
+        target_options = get_valid_targets(df)
+        if not target_options:
+            st.error("No valid target variables found in the dataset")
+            return
+            
         target_variable = st.selectbox(
             "1. Select Target Variable:",
-            options=get_valid_targets(df),
-            index=get_valid_targets(df).index('Daily_Total') if 'Daily_Total' in get_valid_targets(df) else 0
+            options=target_options,
+            index=target_options.index('Daily_Total') if 'Daily_Total' in target_options else 0,
+            help="Choose the variable you want to predict"
         )
         
         # Step 2: Test size selection
@@ -296,47 +309,57 @@ def main():
             min_value=10,
             max_value=30,
             value=20,
-            step=5
+            step=5,
+            help="Percentage of data to use for testing"
         ) / 100
         
+        # Step 3: Feature Selection
         st.subheader("3. Feature Selection")
         num_features = st.slider(
             "Number of top features to select:",
             min_value=5,
-            max_value=30,
-            value=10,
-            step=1
+            max_value=min(30, len(df.columns)-1),  # Don't exceed available features
+            value=min(10, len(df.columns)-1),
+            step=1,
+            help="Select how many top features to consider"
         )
         
         # Feature selection method
         feature_selection_method = st.selectbox(
             "Feature selection method:",
             options=["SelectKBest (f_regression)", "SelectKBest (mutual_info_regression)"],
-            index=0
+            index=0,
+            help="Choose the statistical method for feature selection"
         )
         
-        # Get feature selection
-        df_processed = preprocess_data(df, target_variable)
-        X = df_processed.drop(columns=[target_variable])
-        y = df_processed[target_variable]
-        
-        if feature_selection_method == "SelectKBest (f_regression)":
-            selector = SelectKBest(score_func=f_regression, k=num_features)
-        else:
-            selector = SelectKBest(score_func=mutual_info_regression, k=num_features)
+        # Preprocess data and select features
+        try:
+            df_processed = preprocess_data(df, target_variable)
+            X = df_processed.drop(columns=[target_variable])
+            y = df_processed[target_variable]
             
-        selector.fit(X, y)
-        top_features = X.columns[selector.get_support()].tolist()
-        
-        # Feature selection multiselect
-        selected_features = st.multiselect(
-            "Select features for training",
-            options=top_features,
-            default=top_features,
-            key="feature_selector"
-        )
-        
-        st.session_state.selected_features = selected_features
+            if feature_selection_method == "SelectKBest (f_regression)":
+                selector = SelectKBest(score_func=f_regression, k=num_features)
+            else:
+                selector = SelectKBest(score_func=mutual_info_regression, k=num_features)
+                
+            selector.fit(X, y)
+            top_features = X.columns[selector.get_support()].tolist()
+            
+            # Feature selection multiselect
+            selected_features = st.multiselect(
+                "Select features for training:",
+                options=top_features,
+                default=top_features,
+                key="feature_selector",
+                help="Choose which features to include in the model"
+            )
+            
+            st.session_state.selected_features = selected_features
+            
+        except Exception as e:
+            st.error(f"Feature selection failed: {str(e)}")
+            return
         
         # Step 4: Model selection
         st.subheader("4. Select Models")
@@ -344,40 +367,53 @@ def main():
         st.session_state.selected_models = st.multiselect(
             "Choose models to run:",
             options=model_options,
-            default=st.session_state.selected_models
+            default=st.session_state.selected_models,
+            help="Select which machine learning models to compare"
         )
         
         # Step 5: Run Analysis
         st.subheader("5. Run Analysis")
-        if st.button("Run Models", type="primary"):
-            with st.spinner("Training models..."):
-                # Use ONLY the user-selected features
-                X_selected = X[st.session_state.selected_features]
+        if st.button("🚀 Run Models", type="primary", help="Train models with selected configuration"):
+            if not st.session_state.selected_models:
+                st.error("Please select at least one model")
+                return
+            if not st.session_state.selected_features:
+                st.error("Please select at least one feature")
+                return
                 
-                # Train models with caching
-                results, models, X_test, y_test = train_models_with_features(
-                    X_selected, y, test_size, st.session_state.selected_models
-                )
-                
-                # Store results in session state
-                st.session_state.trained_models = {
-                    'results': results,
-                    'models': models,
-                    'X_test': X_test,
-                    'y_test': y_test,
-                    'target_variable': target_variable
-                }
-                st.session_state.analysis_complete = True
-            st.success("Model training completed!")
+            with st.spinner("Training models... This may take a few minutes"):
+                try:
+                    # Use only the user-selected features
+                    X_selected = X[st.session_state.selected_features]
+                    
+                    # Train models with caching
+                    results, models, X_test, y_test = train_models_with_features(
+                        X_selected, y, test_size, st.session_state.selected_models
+                    )
+                    
+                    # Store results in session state
+                    st.session_state.trained_models = {
+                        'results': results,
+                        'models': models,
+                        'X_test': X_test,
+                        'y_test': y_test,
+                        'target_variable': target_variable,
+                        'df_processed': df_processed
+                    }
+                    st.session_state.analysis_complete = True
+                    st.success("✅ Model training completed!")
+                except Exception as e:
+                    st.error(f"Model training failed: {str(e)}")
     
-    # Display results if analysis is complete
+    # Main content area
     if st.session_state.analysis_complete:
         results = st.session_state.trained_models['results']
         y_test = st.session_state.trained_models['y_test']
         target_variable = st.session_state.trained_models['target_variable']
+        df_processed = st.session_state.trained_models['df_processed']
         
         st.header("🔍 Model Analysis")
-        model_tabs = st.tabs(["Performance Metrics", "Predictions", "Feature Analysis"])
+        model_tabs = st.tabs(["📊 Performance Metrics", "🔮 Predictions", "📈 Feature Analysis"])
         
         with model_tabs[0]:
             create_model_comparison_plots(results, y_test)
@@ -385,7 +421,7 @@ def main():
         with model_tabs[1]:
             st.subheader("Actual vs Predicted")
             
-            # Create dropdown to select model - uses session state to preserve selection
+            # Create dropdown to select model
             selected_model = st.selectbox(
                 "Select model to visualize:", 
                 options=list(results.keys()),
@@ -394,10 +430,17 @@ def main():
             )
             
             # Update session state index when selection changes
-            if selected_model != list(results.keys())[st.session_state.model_comparison_index]:
-                st.session_state.model_comparison_index = list(results.keys()).index(selected_model)
+            current_index = list(results.keys()).index(selected_model)
+            if current_index != st.session_state.model_comparison_index:
+                st.session_state.model_comparison_index = current_index
+                st.experimental_rerun()
             
-            create_model_prediction_plots(results, y_test, selected_model, target_variable)
+            create_model_prediction_plots(
+                results, 
+                y_test, 
+                selected_model, 
+                target_variable
+            )
         
         with model_tabs[2]:
             st.subheader("Feature Analysis")
@@ -411,9 +454,10 @@ def main():
             corr_matrix = df_processed[selected_cols].corr()
             fig_heatmap = px.imshow(
                 corr_matrix,
-                text_auto=True,
+                text_auto=".2f",
                 aspect="auto",
-                color_continuous_scale='viridis'
+                color_continuous_scale='viridis',
+                title="Feature Correlation Matrix"
             )
             st.plotly_chart(fig_heatmap, use_container_width=True)
             
@@ -434,29 +478,32 @@ def main():
                         x='Importance',
                         y='Feature',
                         orientation='h',
-                        title='Feature Importance (Selected Features)',
+                        title='Feature Importance Scores',
                         color='Importance',
                         color_continuous_scale='Blues'
                     )
                     st.plotly_chart(fig_importance, use_container_width=True)
                     
-                    # Get top 5 important features for bivariate analysis
+                    # Get top important features for bivariate analysis
                     top_features = feature_importance.head(5)['Feature'].tolist()
                 except Exception as e:
                     st.warning(f"Could not display feature importance: {str(e)}")
-                    # Fallback to correlation if feature importance fails
-                    corr_with_target = df_processed[st.session_state.selected_features].corrwith(df_processed[target_variable])
+                    # Fallback to correlation
+                    corr_with_target = df_processed[st.session_state.selected_features].corrwith(
+                        df_processed[target_variable]
+                    )
                     top_features = corr_with_target.abs().sort_values(ascending=False).head(5).index.tolist()
             else:
                 # Use correlation if feature importance isn't available
-                corr_with_target = df_processed[st.session_state.selected_features].corrwith(df_processed[target_variable])
+                corr_with_target = df_processed[st.session_state.selected_features].corrwith(
+                    df_processed[target_variable]
+                )
                 top_features = corr_with_target.abs().sort_values(ascending=False).head(5).index.tolist()
             
             # Bivariate Analysis Section
             st.subheader("🔍 Bivariate Analysis")
-            st.write("Explore relationships between individual features and the target variable")
+            st.write("Explore relationships between features and the target variable")
             
-            # Feature selector
             selected_feature = st.selectbox(
                 "Select feature to analyze:",
                 options=top_features,
@@ -479,39 +526,38 @@ def main():
                 )
                 st.plotly_chart(fig_scatter, use_container_width=True)
                 
-                # Box plot for categorical features (if applicable)
+                # Box plot for categorical features
                 if df_processed[selected_feature].nunique() < 10:
                     fig_box = px.box(
                         df_processed,
                         x=selected_feature,
                         y=target_variable,
-                        title=f'Distribution of {target_variable} by {selected_feature}'
+                        title=f'Distribution by {selected_feature}'
                     )
                     st.plotly_chart(fig_box, use_container_width=True)
             
             with col2:
-                # Hexbin plot for dense data
-                if len(df_processed) > 1000:
-                    fig_hexbin = px.density_heatmap(
-                        df_processed,
-                        x=selected_feature,
-                        y=target_variable,
-                        title=f'Density of {selected_feature} vs {target_variable}',
-                        nbinsx=20,
-                        nbinsy=20,
-                        color_continuous_scale='Viridis'
-                    )
-                    st.plotly_chart(fig_hexbin, use_container_width=True)
-                else:
-                    # Violin plot for smaller datasets
-                    fig_violin = px.violin(
-                        df_processed,
-                        x=selected_feature,
-                        y=target_variable,
-                        title=f'Distribution of {target_variable} by {selected_feature}',
-                        box=True
-                    )
-                    st.plotly_chart(fig_violin, use_container_width=True)
+                # Density plot for numeric features
+                if pd.api.types.is_numeric_dtype(df_processed[selected_feature]):
+                    if len(df_processed) > 1000:
+                        fig_density = px.density_heatmap(
+                            df_processed,
+                            x=selected_feature,
+                            y=target_variable,
+                            title='Data Density',
+                            nbinsx=20,
+                            nbinsy=20,
+                            color_continuous_scale='Viridis'
+                        )
+                    else:
+                        fig_density = px.violin(
+                            df_processed,
+                            x=selected_feature,
+                            y=target_variable,
+                            title='Distribution',
+                            box=True
+                        )
+                    st.plotly_chart(fig_density, use_container_width=True)
                 
                 # Correlation stats
                 corr = df_processed[selected_feature].corr(df_processed[target_variable])
@@ -520,78 +566,8 @@ def main():
                     value=f"{corr:.3f}",
                     help="Pearson correlation coefficient (-1 to 1)"
                 )
-            
-            # Additional bivariate analysis
-            st.subheader("📊 Detailed Feature Analysis")
-            
-            # Conditional plots based on feature type
-            if pd.api.types.is_numeric_dtype(df_processed[selected_feature]):
-                # For numeric features
-                tab1, tab2 = st.tabs(["Binned Analysis", "Rolling Correlation"])
-                
-                with tab1:
-                    # Create bins for the selected feature
-                    bins = st.slider(
-                        f"Number of bins for {selected_feature}",
-                        min_value=3,
-                        max_value=20,
-                        value=5,
-                        key=f"bins_{selected_feature}"
-                    )
-                    
-                    binned_data = df_processed.copy()
-                    binned_data[f'{selected_feature}_bins'] = pd.cut(
-                        binned_data[selected_feature],
-                        bins=bins
-                    )
-                    
-                    fig_binned = px.bar(
-                        binned_data.groupby(f'{selected_feature}_bins')[target_variable].mean().reset_index(),
-                        x=f'{selected_feature}_bins',
-                        y=target_variable,
-                        title=f'Average {target_variable} by {selected_feature} Bins',
-                        labels={f'{selected_feature}_bins': selected_feature}
-                    )
-                    st.plotly_chart(fig_binned, use_container_width=True)
-                
-                with tab2:
-                    # Rolling correlation over time (if time data exists)
-                    if 'Day' in df_processed.columns and 'Month' in df_processed.columns:
-                        rolling_window = st.slider(
-                            "Rolling window size (days)",
-                            min_value=7,
-                            max_value=90,
-                            value=30,
-                            key=f"rolling_window_{selected_feature}"
-                        )
-                        
-                        temp_df = df_processed.sort_values(['Year', 'Month', 'Day'])
-                        temp_df['Rolling_Correlation'] = temp_df[selected_feature].rolling(rolling_window).corr(temp_df[target_variable])
-                        
-                        fig_rolling_corr = px.line(
-                            temp_df.dropna(),
-                            x=temp_df.dropna().index,
-                            y='Rolling_Correlation',
-                            title=f'{rolling_window}-Day Rolling Correlation with {target_variable}',
-                            labels={'Rolling_Correlation': 'Correlation'}
-                        )
-                        st.plotly_chart(fig_rolling_corr, use_container_width=True)
-                    else:
-                        st.info("Time data not available for rolling correlation analysis")
-            else:
-                # For categorical features
-                st.write(f"**Category-wise {target_variable} Analysis**")
-                fig_cat = px.bar(
-                    df_processed.groupby(selected_feature)[target_variable].mean().sort_values().reset_index(),
-                    x=selected_feature,
-                    y=target_variable,
-                    title=f'Average {target_variable} by {selected_feature}',
-                    color=target_variable,
-                    color_continuous_scale='Blues'
-                )
-                st.plotly_chart(fig_cat, use_container_width=True)
-        
-        else:
-            st.info("Configure your models and click 'Run Models' to see results")
+    else:
+        st.info("ℹ️ Configure your models and click 'Run Models' to see results")
+
 if __name__ == "__main__":
     main()
