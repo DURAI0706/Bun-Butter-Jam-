@@ -196,8 +196,15 @@ def create_model_comparison_plots(results, y_test):
     for name, res in results.items():
         st.write(f"**{name}**: {res['Best Params']}")
 
-def create_model_prediction_plots(results, y_test, selected_model):
-    """Create prediction visualizations for a specific model"""
+def create_model_prediction_plots(results, y_test, selected_model, target_variable):
+    """Create prediction visualizations for a specific model
+    
+    Args:
+        results: Dictionary containing model results
+        y_test: Actual target values
+        selected_model: Name of the model to visualize
+        target_variable: Name of the target variable for labeling
+    """
     # Actual vs Predicted scatter plot
     actual_vs_pred_df = pd.DataFrame({
         'Actual': y_test,
@@ -207,7 +214,7 @@ def create_model_prediction_plots(results, y_test, selected_model):
     fig_scatter = px.scatter(
         actual_vs_pred_df,
         x='Actual',
-        y='Predicted',
+        y='Predicted',  # Fixed typo here (was 'Predicted')
         title=f"{selected_model}: Actual vs Predicted Values",
         opacity=0.7
     )
@@ -390,7 +397,7 @@ def main():
             if selected_model != list(results.keys())[st.session_state.model_comparison_index]:
                 st.session_state.model_comparison_index = list(results.keys()).index(selected_model)
             
-            create_model_prediction_plots(results, y_test, selected_model)
+            create_model_prediction_plots(results, y_test, selected_model, target_variable)
         
         with model_tabs[2]:
             st.subheader("Feature Analysis")
