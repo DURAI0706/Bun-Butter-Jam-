@@ -196,33 +196,9 @@ def show_login_page():
 
 
 def logout():
-    # Your logout logic here
-    st.session_state.logged_in = False
-
-# Sidebar navigation and layout
-with st.sidebar:
-    navigation_main()  # Main navigation buttons or options
-
-    # Add space to push logout button to bottom
-    st.markdown("<div style='flex:1'></div>", unsafe_allow_html=True)
-
-    # Logout button with icon at bottom
-    st.markdown(
-        """
-        <style>
-            .logout-button {
-                position: fixed;
-                bottom: 20px;
-                left: 20px;
-                width: calc(100% - 40px);
-            }
-        </style>
-        <div class="logout-button">
-        """,
-        unsafe_allow_html=True,
-    )
-    st.button("🚪 Logout", on_click=logout)
-
+    """Log the user out"""
+    st.session_state.clear()
+    st.query_params.clear()
 
 
 def get_user_info():
