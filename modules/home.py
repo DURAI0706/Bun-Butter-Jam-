@@ -21,7 +21,7 @@ def load_data():
             st.error(f"Data file not found at: {file_path}")
             return None
         df = pd.read_csv(file_path)
-        df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y')
+        df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
         st.session_state['sales_data'] = df
         return df
     except Exception as e:
