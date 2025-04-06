@@ -23,18 +23,18 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-with st.sidebar:
-    selected = option_menu(
-        "Main Menu", 
-        ["🏠 Home", "📊 Detailed EDA", "🤖 ML Algorithms"],
-        menu_icon="cast", 
-        default_index=0
-    )
-
-# Route to selected module
-if selected == "🏠 Home":
-    home.load_module()
-elif selected == "📊 Detailed EDA":
-    detail_eda.main()
-elif selected == "🤖 ML Algorithms":
-    ml.main()
+    with st.sidebar:
+        selected = option_menu(
+            "Main Menu", 
+            ["🏠 Home", "📊 Detailed EDA", "🤖 ML Algorithms"],
+            menu_icon="cast", 
+            default_index=0
+        )
+    
+    # Route to selected module
+    if selected == "🏠 Home":
+        home.load_module()
+    elif selected == "📊 Detailed EDA":
+        detail_eda.main()
+    elif selected == "🤖 ML Algorithms":
+        ml.main()
