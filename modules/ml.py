@@ -410,6 +410,142 @@ def main():
                 if st.button("🔄 Retrain Models", help="Run the models again with current configuration"):
                     st.session_state.analysis_complete = False  # Reset to trigger training
                     st.rerun()  # This will rerun the script and hit the training code again
+                    
+    # Data Overview Section
+    st.header("📊 Data Overview")
+    data_tabs = st.tabs(["Time Patterns", "Product Performance", "Seasonal Trends"])
+    
+    with data_tabs[0]:
+        st.subheader("Daily Sales Patterns")
+        
+        # Prepare data for visualization
+        if 'DayOfWeek' in original_df.columns and target_variable in original_df.columns:
+            # Map day of week numbers to names
+            day_names = {0: 'Monday', 1: 'Tuesday', 2: 'Wednesday', 3: 'Thursday', 
+                         4: 'Friday', 5: 'Saturday', 6: 'Sunday'}
+            day_pattern_data = original_df.groupby('DayOfWeek')[target_variable].mean().reset_index()
+            day_pattern_data['Day'] = day_pattern_data['DayOfWeek'].map(day_names)
+            day_pattern_data = day_pattern_data.sort_values('DayOfWeek')
+            
+            fig_day_pattern = px.bar(
+                day_pattern_data,
+                x='Day',
+                y=target_variable,
+                title=f'Average {target_variable} by Day of Week',
+                color=target_variable,
+                color_continuous_scale='Blues'
+            )
+            st.plotly_chart(fig_day_pattern, use_container_width=True)
+            
+            # Add average weekend vs weekday comparison
+            col1, col2 = st.columns(2)
+            with col1:
+                weekend_avg = original_df[original_df['IsWeekend'] == 1][target_variable].mean()
+                weekday_avg = original_df[original_df['IsWeekend'] == 0][target_variable].mean()
+                weekend_data = pd.DataFrame({
+                    'Day Type': ['Weekday', 'Weekend'],
+                    target_variable: [weekday_avg, weekend_avg]
+                })
+                
+                fig_weekend = px.bar(
+                    weekend_data,
+                    x='Day Type',
+                    y=target_variable,
+                    title=f'Weekday vs Weekend {target_variable}',
+                    color='Day Type',
+                    color_discrete_map={'Weekday': 'lightblue', 'Weekend': 'darkblue'}
+                )
+                st.plotly_chart(fig_weekend, use_container_width=True)
+            
+            with col2:
+                # Calculate rolling average to show trend
+                if 'Rolling_7' in original_df.columns:
+                    # Create time series with the first day of each rolling window
+                    rolling_data = original_df[['Rolling_7']].copy()
+                    rolling_data = rolling_data.reset_index().rename(columns={'index': 'Day'})
+                    
+                    fig_rolling = px.line(
+                        rolling_data,
+                        x='Day',
+                        y='Rolling_7',
+                        title='7-Day Rolling Average Sales',
+                        labels={'Rolling_7': 'Average Sales'}
+                    )
+                    st.plotly_chart(fig_rolling, use_container_width=True)
+    
+    with data_tabs[1]:
+        st.subheader("Product Performance Analysis")
+        
+        # Check if relevant columns exist
+        if 'Product_Type' in original_df.columns:
+            product_data = original_df.groupby('Product_Type')[target_variable].sum().reset_index()
+            product_data = product_data.sort_values(target_variable, ascending=False)
+            
+            # Top products by total sales
+            fig_product = px.pie(
+                product_data,
+                values=target_variable,
+                names='Product_Type',
+                title=f'Product Mix by {target_variable}',
+                hole=0.4,
+            )
+            st.plotly_chart(fig_product, use_container_width=True)
+            
+            # Product performance comparison
+            fig_product_bar = px.bar(
+                product_data.head(10),  # Top 10 products
+                x='Product_Type',
+                y=target_variable,
+                title=f'Top Products by {target_variable}',
+                color=target_variable,
+                color_continuous_scale='Blues'
+            )
+            st.plotly_chart(fig_product_bar, use_container_width=True)
+    
+    with data_tabs[2]:
+        st.subheader("Seasonal Analysis")
+        
+        if 'Month' in original_df.columns and target_variable in original_df.columns:
+            # Map month numbers to names
+            month_names = {1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Jun',
+                           7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'}
+            
+            month_data = original_df.groupby('Month')[target_variable].mean().reset_index()
+            month_data['Month_Name'] = month_data['Month'].map(month_names)
+            month_data = month_data.sort_values('Month')
+            
+            fig_month = px.line(
+                month_data,
+                x='Month_Name',
+                y=target_variable,
+                title=f'Monthly {target_variable} Trends',
+                markers=True
+            )
+            
+            # Add range slider to zoom in on specific time periods
+            fig_month.update_layout(
+                xaxis=dict(
+                    type='category'
+                )
+            )
+            st.plotly_chart(fig_month, use_container_width=True)
+            
+            # Add quarter analysis if we have enough data
+            if len(month_data) >= 4:
+                # Create quarter column
+                month_data['Quarter'] = ((month_data['Month'] - 1) // 3) + 1
+                quarter_data = month_data.groupby('Quarter')[target_variable].mean().reset_index()
+                
+                fig_quarter = px.bar(
+                    quarter_data,
+                    x='Quarter',
+                    y=target_variable,
+                    title=f'Quarterly {target_variable} Analysis',
+                    color=target_variable,
+                    text=round(quarter_data[target_variable], 2)
+                )
+                fig_quarter.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+                st.plotly_chart(fig_quarter, use_container_width=True)
     
     # Main content area
     if st.session_state.analysis_complete:
