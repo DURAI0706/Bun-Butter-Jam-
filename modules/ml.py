@@ -319,48 +319,43 @@ def main():
         num_features = st.slider(
             "Number of top features to select:",
             min_value=5,
-            max_value=min(30, len(df.columns)-1),  # Don't exceed available features
-            value=min(10, len(df.columns)-1),
-            step=1,
-            help="Select how many top features to consider"
+            max_value=30,
+            value=10,
+            step=1
         )
-        
-        # Feature selection method
-        feature_selection_method = st.selectbox(
-            "Feature selection method:",
-            options=["SelectKBest (f_regression)", "SelectKBest (mutual_info_regression)"],
-            index=0,
-            help="Choose the statistical method for feature selection"
-        )
-        
-        # Preprocess data and select features
-        try:
-            df_processed = preprocess_data(df, target_variable)
-            X = df_processed.drop(columns=[target_variable])
-            y = df_processed[target_variable]
-            
-            if feature_selection_method == "SelectKBest (f_regression)":
-                selector = SelectKBest(score_func=f_regression, k=num_features)
-            else:
-                selector = SelectKBest(score_func=mutual_info_regression, k=num_features)
-                
+
+        # Get initial feature selection
+        df_processed = preprocess_data(df, target_variable)
+        X = df_processed.drop(columns=[target_variable])
+        y = df_processed[target_variable]
+
+        # Initialize session state for selected features if it doesn't exist
+        if 'selected_features' not in st.session_state:
+            selector = SelectKBest(score_func=f_regression, k=num_features)
             selector.fit(X, y)
-            top_features = X.columns[selector.get_support()].tolist()
-            
-            # Feature selection multiselect
-            selected_features = st.multiselect(
-                "Select features for training:",
-                options=top_features,
-                default=top_features,
-                key="feature_selector",
-                help="Choose which features to include in the model"
-            )
-            
-            st.session_state.selected_features = selected_features
-            
-        except Exception as e:
-            st.error(f"Feature selection failed: {str(e)}")
-            return
+            st.session_state.selected_features = X.columns[selector.get_support()].tolist()
+        # Update only if slider value changes
+        elif 'prev_num_features' not in st.session_state or st.session_state.prev_num_features != num_features:
+            selector = SelectKBest(score_func=f_regression, k=num_features)
+            selector.fit(X, y)
+            st.session_state.selected_features = X.columns[selector.get_support()].tolist()
+            st.session_state.prev_num_features = num_features
+
+        # Feature selection multiselect
+        selector = SelectKBest(score_func=f_classif, k=num_features)
+        selector.fit(X, y)
+        selected_mask = selector.get_support()
+        top_features = X.columns[selected_mask].tolist()
+        
+        # Now show multiselect for the top features
+        selected_features = st.multiselect(
+            "Select features for training",
+            options=top_features,
+            default=top_features
+        )
+
+        # Update the session state with user's selection
+        st.session_state.selected_features = selected_features
         
         # Step 4: Model selection
         st.subheader("4. Select Models")
