@@ -373,37 +373,47 @@ def main():
         
         # Step 5: Run Analysis
         st.subheader("5. Run Analysis")
-        if st.button("🚀 Run Models", type="primary", help="Train models with selected configuration"):
-            if not st.session_state.selected_models:
-                st.error("Please select at least one model")
-                return
-            if not st.session_state.selected_features:
-                st.error("Please select at least one feature")
-                return
-                
-            with st.spinner("Training models... This may take a few minutes"):
-                try:
-                    # Use only the user-selected features
-                    X_selected = X[st.session_state.selected_features]
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🚀 Run Models", type="primary", help="Train models with selected configuration"):
+                if not st.session_state.selected_models:
+                    st.error("Please select at least one model")
+                    return
+                if not st.session_state.selected_features:
+                    st.error("Please select at least one feature")
+                    return
                     
-                    # Train models with caching
-                    results, models, X_test, y_test = train_models_with_features(
-                        X_selected, y, test_size, st.session_state.selected_models
-                    )
-                    
-                    # Store results in session state
-                    st.session_state.trained_models = {
-                        'results': results,
-                        'models': models,
-                        'X_test': X_test,
-                        'y_test': y_test,
-                        'target_variable': target_variable,
-                        'df_processed': df_processed
-                    }
-                    st.session_state.analysis_complete = True
-                    st.success("✅ Model training completed!")
-                except Exception as e:
-                    st.error(f"Model training failed: {str(e)}")
+                with st.spinner("Training models... This may take a few minutes"):
+                    try:
+                        # Use only the user-selected features
+                        X_selected = X[st.session_state.selected_features]
+                        
+                        # Train models with caching
+                        results, models, X_test, y_test = train_models_with_features(
+                            X_selected, y, test_size, st.session_state.selected_models
+                        )
+                        
+                        # Store results in session state
+                        st.session_state.trained_models = {
+                            'results': results,
+                            'models': models,
+                            'X_test': X_test,
+                            'y_test': y_test,
+                            'target_variable': target_variable,
+                            'df_processed': df_processed
+                        }
+                        st.session_state.analysis_complete = True
+                        st.session_state.models_trained_once = True  # New flag
+                        st.success("✅ Model training completed!")
+                    except Exception as e:
+                        st.error(f"Model training failed: {str(e)}")
+        
+        # Add a rerun button if models have been trained once
+        with col2:
+            if st.session_state.get('models_trained_once', False):
+                if st.button("🔄 Retrain Models", help="Run the models again with current configuration"):
+                    st.session_state.analysis_complete = False  # Reset to trigger training
+                    st.rerun()  # This will rerun the script and hit the training code again
     
     # Main content area
     if st.session_state.analysis_complete:
