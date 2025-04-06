@@ -53,43 +53,37 @@ def load_data(uploaded_file=None):
         return None
     
 def convert_to_datetime(df):
-    """Convert object columns to datetime with explicit formats"""
+    """Convert object columns to datetime with explicit format"""
     for col in df.columns:
         if df[col].dtype == 'object':
-            converted = False
-            for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y%m%d',
-                        '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %I:%M %p']:
-                try:
-                    df[col] = pd.to_datetime(df[col], format=fmt)
-                    if pd.api.types.is_datetime64_any_dtype(df[col]):
-                        st.sidebar.success(f"Converted {col} to datetime using format: {fmt}")
-                        converted = True
-                        break
-                except (ValueError, TypeError):
-                    continue
-            if not converted:
-                df[col] = pd.to_datetime(df[col], errors='coerce')
-                if pd.api.types.is_datetime64_any_dtype(df[col]):
-                    st.sidebar.info(f"Fallback: Converted {col} using default parsing with errors='coerce'")
+            try:
+                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y%m%d', 
+                          '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %I:%M %p']:
+                    try:
+                        df[col] = pd.to_datetime(df[col], format=fmt)
+                        if pd.api.types.is_datetime64_any_dtype(df[col]):
+                            st.sidebar.success(f"Converted {col} to datetime using format: {fmt}")
+                            break
+                    except (ValueError, TypeError):
+                        continue
+            except Exception as e:
+                st.warning(f"Could not convert column '{col}' to datetime: {str(e)}")
     return df
 
 def detect_column_types(df):
     """Detect column types and return categorized lists"""
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
-    datetime_cols = df.select_dtypes(include=['datetime64[ns]', 'datetime64[ns, UTC]']).columns.tolist()
     cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-
-    # In case some datetime columns still linger in object due to parsing issues
+    date_cols = df.select_dtypes(include=['datetime']).columns.tolist()
     for col in cat_cols[:]:
         if pd.api.types.is_datetime64_any_dtype(df[col]):
-            datetime_cols.append(col)
+            date_cols.append(col)
             cat_cols.remove(col)
-
     binary_cols = [col for col in df.columns if df[col].nunique() == 2]
     return {
         'numeric': numeric_cols,
         'categorical': cat_cols,
-        'datetime': datetime_cols,
+        'datetime': date_cols,
         'binary': binary_cols
     }
 
@@ -467,8 +461,6 @@ def show_data_preview(df):
         st.write(f"**Memory Usage:** {df.memory_usage(deep=True).sum() / (1024 ** 2):.2f} MB")
 
 def show_correlation_visualizations(df, col_types):
-    """Enhanced correlation visualization dashboard with interactive components"""
-    
     # Helper function to identify date columns
     def get_date_column(df):
         date_cols = [col for col in df.columns if 'date' in col.lower() or 'time' in col.lower()]
@@ -486,24 +478,19 @@ def show_correlation_visualizations(df, col_types):
     quantity_cols = [col for col in df.columns if 'quantity' in col.lower() or 'qty' in col.lower()]
     sales_metric = amount_cols[0] if amount_cols else (quantity_cols[0] if quantity_cols else None)
     
-    # Get column type lists with fallbacks
-    num_cols = col_types.get('numeric', df.select_dtypes(include=np.number).columns.tolist())
-    cat_cols = col_types.get('categorical', df.select_dtypes(include=['object', 'category']).columns.tolist())
-    date_col = get_date_column(df)
-    
     # Top-level metrics
     if sales_metric:
         metrics_container = st.container()
         with metrics_container:
-            cols = st.columns(3)
-            with cols[0]:
+            col1, col2, col3 = st.columns(3)
+            with col1:
                 st.metric("Total Sales", f"{df[sales_metric].sum():,.2f}")
-            with cols[1]:
+            with col2:
                 st.metric("Average Sale", f"{df[sales_metric].mean():,.2f}")
-            with cols[2]:
+            with col3:
                 st.metric("Transactions", f"{len(df):,}")
     
-    # Main dashboard tabs
+    # Main dashboard layout
     tab_names = ["Performance", "Trends", "Distributions", "Relationships", "Advanced"]
     main_tabs = st.tabs(tab_names)
     
@@ -683,7 +670,6 @@ def show_correlation_visualizations(df, col_types):
     with main_tabs[4]:
         st.subheader("🔍 Advanced Analytics")
         
-        # Determine which advanced tabs to show
         adv_tab_names = []
         if len(num_cols) >= 2: adv_tab_names.append("Correlation Matrix")
         if len(num_cols) >= 1: adv_tab_names.append("Normalized Metrics")
@@ -699,22 +685,16 @@ def show_correlation_visualizations(df, col_types):
             # Correlation Matrix
             if "Correlation Matrix" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    selected_num_cols = st.multiselect(
-                        "Select metrics for correlation", 
-                        num_cols, 
-                        num_cols[:5]
-                    )
+                    selected_num_cols = st.multiselect("Select metrics for correlation", num_cols, num_cols[:5])
                     if len(selected_num_cols) >= 2:
                         corr_matrix = df[selected_num_cols].corr()
-                        fig = px.imshow(
-                            corr_matrix,
-                            text_auto=True,
-                            aspect="auto",
-                            color_continuous_scale='RdBu',
-                            title="Correlation Matrix"
-                        )
+                        fig = px.imshow(corr_matrix,
+                                      text_auto=True,
+                                      aspect="auto",
+                                      color_continuous_scale='RdBu',
+                                      title="Correlation Matrix")
                         fig.update_layout(height=600)
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, use_container_width=True, key="correlation_matrix_chart")
                 tab_idx += 1
             
             # Normalized Metrics
@@ -790,51 +770,24 @@ def show_correlation_visualizations(df, col_types):
                     st.plotly_chart(fig, use_container_width=True, key="composition_time_chart")
                 tab_idx += 1
             
-            # 3D Visualization - Fixed version
+            # 3D Visualization
             if "3D Visualization" in adv_tab_names:
                 with adv_tabs[tab_idx]:
                     col3d1, col3d2 = st.columns([1, 3])
-                    
                     with col3d1:
-                        # Initialize variables
-                        x_col = num_cols[0]
-                        y_col = num_cols[1] if len(num_cols) > 1 else num_cols[0]
-                        z_col = num_cols[2] if len(num_cols) > 2 else num_cols[0]
-                        color_col = None
-                        
-                        # Create selectors
                         x_col = st.selectbox("X axis", num_cols, key="3d_x_col")
-                        y_col = st.selectbox("Y axis", 
-                                           [c for c in num_cols if c != x_col], 
-                                           key="3d_y_col")
-                        z_col = st.selectbox("Z axis", 
-                                           [c for c in num_cols if c not in [x_col, y_col]], 
-                                           key="3d_z_col")
+                        y_col = st.selectbox("Y axis", [c for c in num_cols if c != x_col], key="3d_y_col")
+                        z_col = st.selectbox("Z axis", [c for c in num_cols if c not in [x_col, y_col]], key="3d_z_col")
                         
                         if cat_cols:
-                            color_col = st.selectbox(
-                                "Color by", 
-                                ['None'] + cat_cols, 
-                                key="3d_color_col"
-                            )
+                            color_col = st.selectbox("Color by", ['None'] + cat_cols, key="3d_color_col")
                             color_col = None if color_col == 'None' else color_col
                     
                     with col3d2:
-                        # Create plot with conditional color parameter
-                        plot_args = {
-                            'x': x_col,
-                            'y': y_col,
-                            'z': z_col,
-                            'title': f"3D Visualization: {x_col} vs {y_col} vs {z_col}"
-                        }
-                        
-                        if color_col is not None:
-                            plot_args['color'] = color_col
-                        
-                        fig = px.scatter_3d(df, **plot_args)
-                        st.plotly_chart(fig, use_container_width=True)
+                        fig = px.scatter_3d(df, x=x_col, y=y_col, z=z_col, color=color_col,
+                                         title=f"3D Visualization")
+                        st.plotly_chart(fig, use_container_width=True, key="3d_visualization_chart")
                 tab_idx += 1
-                
             
             # Sunburst Chart
             if "Sunburst Chart" in adv_tab_names:
