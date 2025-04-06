@@ -433,7 +433,7 @@ def main():
             current_index = list(results.keys()).index(selected_model)
             if current_index != st.session_state.model_comparison_index:
                 st.session_state.model_comparison_index = current_index
-                st.experimental_rerun()
+                #st.experimental_rerun()
             
             create_model_prediction_plots(
                 results, 
