@@ -24,7 +24,7 @@ def main():
     """, unsafe_allow_html=True)
     
     # Navigation options
-    selected = option_menu(
+    selected = st.sidebar.option_menu(
         "Main Menu", 
         ["🏠 Home", "📊 Detailed EDA", "🤖 ML Algorithms"],
         menu_icon="cast", 
