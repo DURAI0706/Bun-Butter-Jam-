@@ -32,9 +32,9 @@ with st.sidebar:
     )
     
     # Route to selected module
-    if menu == "🏠 Home":
-        home.load_module()
-    elif menu == "📊 Detailed EDA":
-        detail_eda.main()
-    elif menu == "🤖 ML Algorithms":
-        ml.main()
+if selected == "🏠 Home":
+    home.load_module()
+elif selected == "📊 Detailed EDA":
+    detail_eda.main()
+elif selected == "🤖 ML Algorithms":
+    ml.main()
