@@ -1,4 +1,3 @@
-
 import streamlit as st
 from login import show_login_page, logout
 from modules.navigation import main as navigation_main
@@ -18,28 +17,8 @@ def main():
         return
 
     # Logged in, show dashboard
-    with st.sidebar:
-        navigation_main()  # Main navigation buttons or options
-    
-        # Add space to push logout button to bottom
-        st.markdown("<div style='flex:1'></div>", unsafe_allow_html=True)
-    
-        # Logout button with icon at bottom
-        st.markdown(
-            """
-            <style>
-                .logout-button {
-                    position: fixed;
-                    bottom: 20px;
-                    left: 20px;
-                    width: calc(100% - 40px);
-                }
-            </style>
-            <div class="logout-button">
-            """,
-            unsafe_allow_html=True,
-        )
-        st.button("🚪 Logout", on_click=logout)
+    st.sidebar.button("🚪 Logout", on_click=logout)
+    navigation_main()
 
 if __name__ == "__main__":
     main()
