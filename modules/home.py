@@ -122,7 +122,7 @@ def display_metrics(df):
     """, unsafe_allow_html=True)
     row = st.columns(5)
     metrics = [
-        {"title": "Total Revenue", "value": f"${total_revenue:,.2f}"},
+        {"title": "Total Revenue", "value": f"₹{total_revenue:,.2f}"},
         {"title": "Total Sales Count", "value": f"{total_sales:,}"},
         {"title": "Average Sales/Day", "value": f"{avg_sales:,.1f}"},
         {"title": "Selected Seller", "value": selected_seller},
