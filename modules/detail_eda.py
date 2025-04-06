@@ -53,37 +53,43 @@ def load_data(uploaded_file=None):
         return None
     
 def convert_to_datetime(df):
-    """Convert object columns to datetime with explicit format"""
+    """Convert object columns to datetime with explicit formats"""
     for col in df.columns:
         if df[col].dtype == 'object':
-            try:
-                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y%m%d', 
-                          '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %I:%M %p']:
-                    try:
-                        df[col] = pd.to_datetime(df[col], format=fmt)
-                        if pd.api.types.is_datetime64_any_dtype(df[col]):
-                            st.sidebar.success(f"Converted {col} to datetime using format: {fmt}")
-                            break
-                    except (ValueError, TypeError):
-                        continue
-            except Exception as e:
-                st.warning(f"Could not convert column '{col}' to datetime: {str(e)}")
+            converted = False
+            for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y%m%d',
+                        '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %I:%M %p']:
+                try:
+                    df[col] = pd.to_datetime(df[col], format=fmt)
+                    if pd.api.types.is_datetime64_any_dtype(df[col]):
+                        st.sidebar.success(f"Converted {col} to datetime using format: {fmt}")
+                        converted = True
+                        break
+                except (ValueError, TypeError):
+                    continue
+            if not converted:
+                df[col] = pd.to_datetime(df[col], errors='coerce')
+                if pd.api.types.is_datetime64_any_dtype(df[col]):
+                    st.sidebar.info(f"Fallback: Converted {col} using default parsing with errors='coerce'")
     return df
 
 def detect_column_types(df):
     """Detect column types and return categorized lists"""
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+    datetime_cols = df.select_dtypes(include=['datetime64[ns]', 'datetime64[ns, UTC]']).columns.tolist()
     cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-    date_cols = df.select_dtypes(include=['datetime']).columns.tolist()
+
+    # In case some datetime columns still linger in object due to parsing issues
     for col in cat_cols[:]:
         if pd.api.types.is_datetime64_any_dtype(df[col]):
-            date_cols.append(col)
+            datetime_cols.append(col)
             cat_cols.remove(col)
+
     binary_cols = [col for col in df.columns if df[col].nunique() == 2]
     return {
         'numeric': numeric_cols,
         'categorical': cat_cols,
-        'datetime': date_cols,
+        'datetime': datetime_cols,
         'binary': binary_cols
     }
 
