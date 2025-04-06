@@ -72,13 +72,12 @@ def get_valid_targets(df):
 
 def preprocess_data(df, target_col):
     categorical_cols = [col for col in ['Seller_Name', 'Product_Type'] if col in df.columns]
-
+    
     if categorical_cols:
         encoder = OneHotEncoder(sparse_output=False, drop='first', handle_unknown='ignore')
         categorical_encoded = encoder.fit_transform(df[categorical_cols])
-        categorical_df = pd.DataFrame(categorical_encoded, columns=encoder.get_feature_names_out(), index=df.index)
-        
-        # Instead of dropping, we keep the original categorical columns
+        categorical_df = pd.DataFrame(categorical_encoded, columns=encoder.get_feature_names_out())
+        df = df.drop(columns=categorical_cols)
         df = pd.concat([df, categorical_df], axis=1)
     
     return df
