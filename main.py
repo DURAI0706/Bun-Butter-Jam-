@@ -17,42 +17,8 @@ def main():
         return
 
     # Logged in, show dashboard
-    with st.sidebar:
-        st.title("📊 Dashboard")
-
-        # Call your navigation function
-        navigation_main()
-
-        # Spacer to push the logout button down
-        st.markdown('<div style="height: 300px;"></div>', unsafe_allow_html=True)
-
-        # Styled logout button
-        st.markdown("""
-            <style>
-                .logout-button {
-                    position: fixed;
-                    bottom: 20px;
-                    left: 1.5rem;
-                    width: 85%;
-                }
-                .logout-button button {
-                    background-color: #FF4B4B;
-                    color: white;
-                    border: none;
-                    padding: 0.5rem;
-                    border-radius: 8px;
-                    font-weight: bold;
-                    width: 100%;
-                }
-                .logout-button button:hover {
-                    background-color: #FF1E1E;
-                    cursor: pointer;
-                }
-            </style>
-            <div class="logout-button">
-        """, unsafe_allow_html=True)
-        st.button("🚪 Logout", on_click=logout, key="logout-btn")
-        st.markdown("</div>", unsafe_allow_html=True)
+    st.sidebar.button("🚪 Logout", on_click=logout)
+    navigation_main()
 
 if __name__ == "__main__":
     main()
