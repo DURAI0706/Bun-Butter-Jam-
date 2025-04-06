@@ -71,48 +71,18 @@ def get_valid_targets(df):
     return [col for col in original_columns if col in df.columns and df[col].dtype in ['int64', 'float64']]
 
 def preprocess_data(df, target_col):
-    # Make a copy of the dataframe to avoid modifying the original
-    processed_df = df.copy()
-    
-    # List of categorical columns to process
     categorical_cols = [col for col in ['Seller_Name', 'Product_Type'] if col in df.columns]
-    
+
     if categorical_cols:
-        # 1. One-Hot Encoding (for models that need numeric input)
         encoder = OneHotEncoder(sparse_output=False, drop='first', handle_unknown='ignore')
-        categorical_encoded = encoder.fit_transform(processed_df[categorical_cols])
-        encoded_cols = encoder.get_feature_names_out()
-        encoded_df = pd.DataFrame(categorical_encoded, columns=encoded_cols)
+        categorical_encoded = encoder.fit_transform(df[categorical_cols])
+        categorical_df = pd.DataFrame(categorical_encoded, columns=encoder.get_feature_names_out(), index=df.index)
         
-        # 2. Frequency Encoding (alternative numeric representation)
-        for col in categorical_cols:
-            freq_map = processed_df[col].value_counts(normalize=True).to_dict()
-            processed_df[f'{col}_freq'] = processed_df[col].map(freq_map)
-        
-        # 3. Label Encoding (for tree-based models)
-        for col in categorical_cols:
-            processed_df[f'{col}_label'] = processed_df[col].astype('category').cat.codes
-            
-        # Combine all features
-        processed_df = pd.concat([processed_df, encoded_df], axis=1)
-        
-        # Remove original categorical columns to prevent string values in feature selection
-        processed_df = processed_df.drop(columns=categorical_cols)
+        # Instead of dropping, we keep the original categorical columns
+        df = pd.concat([df, categorical_df], axis=1)
     
-    # Ensure target column is numeric
-    if target_col in processed_df.columns:
-        if processed_df[target_col].dtype == 'object':
-            processed_df[target_col] = pd.to_numeric(processed_df[target_col], errors='coerce')
-    
-    # Convert all remaining columns to numeric (fill NA if needed)
-    for col in processed_df.columns:
-        if processed_df[col].dtype == 'object':
-            processed_df[col] = pd.to_numeric(processed_df[col], errors='coerce')
-    
-    # Fill any remaining NA values
-    processed_df = processed_df.fillna(0)
-    
-    return processed_df
+    return df
+
 
 @st.cache_data
 def train_models_with_features(_X, _y, test_size, selected_models):
