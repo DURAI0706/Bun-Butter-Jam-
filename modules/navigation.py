@@ -1,7 +1,7 @@
 import streamlit as st
 from . import detail_eda  # Changed to relative import
 from . import ml  # Changed to relative import
-
+from . import home  # Changed to relative import
 
 def main():
     st.sidebar.title("📊 Dashboard Modules")
@@ -31,8 +31,7 @@ def main():
     
     # Route to selected module
     if menu == "🏠 Home":
-        st.title("Dashboard Home")
-        st.write("Welcome to the Analytics Dashboard. Select a module from the sidebar.")
+        module1.load_module()
     elif menu == "📊 Detailed EDA":
         detail_eda.main()
     elif menu == "🤖 ML Algorithms":
