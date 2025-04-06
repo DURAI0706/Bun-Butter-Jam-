@@ -71,40 +71,46 @@ def get_valid_targets(df):
     return [col for col in original_columns if col in df.columns and df[col].dtype in ['int64', 'float64']]
 
 def preprocess_data(df, target_col):
-    # Make a copy to avoid modifying original dataframe
+    # Make a copy of the dataframe to avoid modifying the original
     processed_df = df.copy()
     
+    # List of categorical columns to process
     categorical_cols = [col for col in ['Seller_Name', 'Product_Type'] if col in df.columns]
     
     if categorical_cols:
-        # Create encoded versions
+        # 1. One-Hot Encoding (for models that need numeric input)
         encoder = OneHotEncoder(sparse_output=False, drop='first', handle_unknown='ignore')
         categorical_encoded = encoder.fit_transform(processed_df[categorical_cols])
         encoded_cols = encoder.get_feature_names_out()
         encoded_df = pd.DataFrame(categorical_encoded, columns=encoded_cols)
         
-        # Add encoded columns while keeping original categorical columns
+        # 2. Frequency Encoding (alternative numeric representation)
+        for col in categorical_cols:
+            freq_map = processed_df[col].value_counts(normalize=True).to_dict()
+            processed_df[f'{col}_freq'] = processed_df[col].map(freq_map)
+        
+        # 3. Label Encoding (for tree-based models)
+        for col in categorical_cols:
+            processed_df[f'{col}_label'] = processed_df[col].astype('category').cat.codes
+            
+        # Combine all features
         processed_df = pd.concat([processed_df, encoded_df], axis=1)
         
-        # Create frequency encoded versions
-        for col in categorical_cols:
-            freq_encoded = processed_df[col].map(processed_df[col].value_counts(normalize=True))
-            processed_df[f'{col}_freq'] = freq_encoded
-            
-        # Create target encoded versions (if target is available)
-        if target_col in processed_df.columns:
-            for col in categorical_cols:
-                target_means = processed_df.groupby(col)[target_col].mean()
-                processed_df[f'{col}_target_encoded'] = processed_df[col].map(target_means)
+        # Remove original categorical columns to prevent string values in feature selection
+        processed_df = processed_df.drop(columns=categorical_cols)
     
-    # Additional feature engineering
-    if 'Date' in processed_df.columns:
-        processed_df['Date'] = pd.to_datetime(processed_df['Date'])
-        processed_df['Day'] = processed_df['Date'].dt.day
-        processed_df['Month'] = processed_df['Date'].dt.month
-        processed_df['Year'] = processed_df['Date'].dt.year
-        processed_df['DayOfWeek'] = processed_df['Date'].dt.dayofweek
-        processed_df['IsWeekend'] = (processed_df['DayOfWeek'] >= 5).astype(int)
+    # Ensure target column is numeric
+    if target_col in processed_df.columns:
+        if processed_df[target_col].dtype == 'object':
+            processed_df[target_col] = pd.to_numeric(processed_df[target_col], errors='coerce')
+    
+    # Convert all remaining columns to numeric (fill NA if needed)
+    for col in processed_df.columns:
+        if processed_df[col].dtype == 'object':
+            processed_df[col] = pd.to_numeric(processed_df[col], errors='coerce')
+    
+    # Fill any remaining NA values
+    processed_df = processed_df.fillna(0)
     
     return processed_df
 
