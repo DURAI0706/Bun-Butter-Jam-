@@ -53,49 +53,21 @@ def load_data(uploaded_file=None):
         return None
     
 def convert_to_datetime(df):
-    """Convert object columns to datetime by trying common formats sequentially.
-    
-    Args:
-        df (pd.DataFrame): Input dataframe
-        
-    Returns:
-        pd.DataFrame: DataFrame with converted datetime columns
-    """
-    datetime_formats = [
-        '%Y-%m-%d',          # ISO format (2023-01-31)
-        '%m/%d/%Y',          # US format (01/31/2023)
-        '%d/%m/%Y',          # European format (31/01/2023)
-        '%Y%m%d',            # Compact format (20230131)
-        '%Y-%m-%d %H:%M:%S', # ISO with time
-        '%m/%d/%Y %I:%M %p', # US with 12-hour time
-        '%d-%b-%y',          # 31-Jan-23
-        '%b %d, %Y',         # Jan 31, 2023
-    ]
-    
-    for col in df.select_dtypes(include=['object']).columns:
-        original_values = df[col].copy()
-        converted = False
-        
-        for fmt in datetime_formats:
+    """Convert object columns to datetime with explicit format"""
+    for col in df.columns:
+        if df[col].dtype == 'object':
             try:
-                # Use errors='coerce' to avoid raising errors on invalid formats
-                temp_series = pd.to_datetime(df[col], format=fmt, errors='coerce')
-                
-                # Check if we successfully converted any values
-                if temp_series.notna().any():
-                    df[col] = temp_series
-                    st.sidebar.success(f"Converted {col} to datetime using format: {fmt}")
-                    converted = True
-                    break
-                    
+                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y%m%d', 
+                          '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %I:%M %p']:
+                    try:
+                        df[col] = pd.to_datetime(df[col], format=fmt)
+                        if pd.api.types.is_datetime64_any_dtype(df[col]):
+                            st.sidebar.success(f"Converted {col} to datetime using format: {fmt}")
+                            break
+                    except (ValueError, TypeError):
+                        continue
             except Exception as e:
-                continue
-        
-        if not converted:
-            # Restore original values if conversion failed
-            df[col] = original_values
-            st.sidebar.warning(f"Could not determine datetime format for column '{col}'")
-    
+                st.warning(f"Could not convert column '{col}' to datetime: {str(e)}")
     return df
 
 def detect_column_types(df):
