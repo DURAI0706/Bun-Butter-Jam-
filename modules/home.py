@@ -16,12 +16,13 @@ def load_module():
 
 def load_data():
     try:
-        file_path = os.path.join('Coronation Bakery Dataset.csv')
+        file_path = os.path.join('data', 'Coronation_Bakery_version_3.csv')
         if not os.path.exists(file_path):
             st.error(f"Data file not found at: {file_path}")
+            st.info("Please ensure your CSV file is in the 'data' directory and named 'Coronation_Bakery_version_3.csv'")
             return None
         df = pd.read_csv(file_path)
-        df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+        df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y')
         st.session_state['sales_data'] = df
         return df
     except Exception as e:
