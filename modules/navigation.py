@@ -23,8 +23,8 @@ def main():
     </style>
     """, unsafe_allow_html=True)
     
-    # Navigation options
-    selected = st.sidebar.option_menu(
+with st.sidebar:
+    selected = option_menu(
         "Main Menu", 
         ["🏠 Home", "📊 Detailed EDA", "🤖 ML Algorithms"],
         menu_icon="cast", 
