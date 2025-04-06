@@ -30,8 +30,8 @@ with st.sidebar:
         menu_icon="cast", 
         default_index=0
     )
-    
-    # Route to selected module
+
+# Route to selected module
 if selected == "🏠 Home":
     home.load_module()
 elif selected == "📊 Detailed EDA":
