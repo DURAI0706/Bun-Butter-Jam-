@@ -13,8 +13,7 @@ def adapt_to_theme():
     """Detect Streamlit theme and return appropriate color settings"""
     # Try to get the current theme from Streamlit config
     try:
-        from streamlit import config
-        theme = config.get_option("theme.base")
+        theme = st._config.get_option("theme.base")
     except:
         theme = "light"  # Default to light theme if detection fails
     
@@ -32,7 +31,10 @@ def adapt_to_theme():
             'chart_colors': px.colors.sequential.Plasma,
             'heatmap_colorscale': 'Plasma',
             'table_header_color': 'rgba(49, 51, 63, 0.6)',
-            'table_cell_color': 'rgba(49, 51, 63, 0.2)'
+            'table_cell_color': 'rgba(49, 51, 63, 0.2)',
+            'outlier_color': '#FF6B6B',
+            'trend_color': '#00CC96',
+            'zero_line_color': 'rgba(255, 255, 255, 0.2)'
         }
     else:  # light theme
         return {
@@ -47,9 +49,12 @@ def adapt_to_theme():
             'chart_colors': px.colors.sequential.Blues,
             'heatmap_colorscale': 'Blues',
             'table_header_color': 'rgba(221, 221, 221, 0.6)',
-            'table_cell_color': 'rgba(221, 221, 221, 0.2)'
+            'table_cell_color': 'rgba(221, 221, 221, 0.2)',
+            'outlier_color': '#EF553B',
+            'trend_color': '#00CC96',
+            'zero_line_color': 'rgba(0, 0, 0, 0.2)'
         }
-        
+
 @st.cache_data
 def load_data(uploaded_file=None):
     """Load data from uploaded file or default CSV with caching"""
@@ -131,8 +136,8 @@ def generate_kpis(df, col_types):
         })
     return kpis
 
-def style_metric_cards():
-    theme_settings = adapt_to_theme()
+def style_metric_cards(theme_settings):
+    """Apply custom CSS to style metric cards with theme adaptation."""
     st.markdown(
         f"""
         <style>
@@ -154,8 +159,8 @@ def style_metric_cards():
         unsafe_allow_html=True
     )
 
-def show_kpi_cards(kpis):
-    """Display dynamic KPI cards"""
+def show_kpi_cards(kpis, theme_settings):
+    """Display dynamic KPI cards with theme adaptation"""
     cols = st.columns(len(kpis))
     for i, kpi in enumerate(kpis):
         cols[i].metric(
@@ -163,54 +168,44 @@ def show_kpi_cards(kpis):
             value=kpi['value'],
             delta=kpi['delta']
         )
-    style_metric_cards()
+    style_metric_cards(theme_settings)
 
-def show_missing_values(df):
-    """Show missing values analysis"""
+def show_missing_values(df, theme_settings):
+    """Show missing values analysis with theme adaptation"""
     st.subheader("Missing Values Analysis")
     missing = df.isna().sum()
     missing = missing[missing > 0]
     if len(missing) == 0:
         st.success("No missing values found!")
         return
+    
     col1, col2 = st.columns(2)
     with col1:
         missing_df = missing.reset_index()
         missing_df.columns = ['Column', 'Missing Count']
         missing_df['Missing %'] = (missing_df['Missing Count'] / len(df)) * 100
-        st.dataframe(missing_df.sort_values('Missing %', ascending=False))
+        st.dataframe(
+            missing_df.sort_values('Missing %', ascending=False).style
+            .background_gradient(cmap='Reds')
     with col2:
         fig = px.imshow(df.isna(),
                        color_continuous_scale='gray',
                        title="Missing Values Heatmap (Yellow = Missing)")
+        fig.update_layout(
+            plot_bgcolor=theme_settings['plot_bgcolor'],
+            paper_bgcolor=theme_settings['paper_bgcolor']
+        )
         st.plotly_chart(fig, use_container_width=True)
 
-def show_correlations(df, col_types):
-    theme_settings = adapt_to_theme()  # Get theme settings
-    
-    # Then use these settings in your plots:
-    fig = px.imshow(
-        corr,
-        text_auto=".2f",
-        color_continuous_scale=theme_settings['heatmap_colorscale'],
-        zmin=-1,
-        zmax=1,
-        title=f"Feature Correlation Heatmap (Method: {corr_method.title()})"
-    )
-    fig.update_layout(
-        plot_bgcolor=theme_settings['plot_bgcolor'],
-        paper_bgcolor=theme_settings['paper_bgcolor'],
-        font_color=theme_settings['font_color']
-    )
-    """
-    Enhanced correlation analysis with label encoding for categorical columns
-    Combines the best features of both versions with error fixes
-    """
+def show_correlations(df, col_types, theme_settings):
+    """Enhanced correlation analysis with theme adaptation"""
     if len(col_types['numeric']) < 2 and len(col_types['categorical']) < 2:
         st.warning("Not enough numeric or categorical columns for correlation analysis (need at least 2 columns)")
         return
+    
     st.subheader("📈 Feature Correlations Analysis")
     df_corr = df.copy()
+    
     if len(col_types['categorical']) > 0:
         le = LabelEncoder()
         categorical_cols = col_types['categorical']
@@ -222,17 +217,21 @@ def show_correlations(df, col_types):
                 df_corr.drop(col, axis=1, inplace=True)
                 if col in col_types['numeric']:
                     col_types['numeric'].remove(col)
+    
     all_cols = col_types['numeric'] + [col for col in col_types['categorical'] if col in df_corr.columns]
     
     if len(all_cols) < 2:
         st.warning("Not enough valid columns for correlation analysis after encoding")
         return
+    
     corr_method = st.radio("Correlation method", 
                           ['pearson', 'spearman', 'kendall'],
                           horizontal=True,
                           key='corr_method_selector')
+    
     corr = df_corr[all_cols].corr(method=corr_method)
     col1, col2 = st.columns([1, 2])
+    
     with col1:
         st.markdown("### Correlation Ranking")
         corr_unstacked = corr.abs().unstack()
@@ -244,30 +243,38 @@ def show_correlations(df, col_types):
         corr_pairs['Type 2'] = corr_pairs['Feature 2'].map(dtypes)
         corr_pairs['Correlation'] = corr_pairs['Correlation'].round(3)
         corr_pairs = corr_pairs.drop_duplicates(subset=['Correlation'])
+        
         def color_high_correlations(val):
-            color = 'red' if abs(val) > 0.7 else 'orange' if abs(val) > 0.5 else 'black'
+            color = theme_settings['outlier_color'] if abs(val) > 0.7 else 'orange' if abs(val) > 0.5 else theme_settings['text_color']
             return f'color: {color}'
+        
         display_df = corr_pairs.head(20).copy()
         for col in ['Feature 1', 'Feature 2', 'Type 1', 'Type 2']:
             display_df[col] = display_df[col].astype(str)
+        
         st.dataframe(
             display_df.style.map(color_high_correlations, subset=['Correlation']),
             height=600,
             use_container_width=True
         )
+        
         if len(col_types['categorical']) > 0:
             st.info("ℹ️ Categorical columns were label encoded for correlation analysis")
+    
     with col2:
         st.markdown("### Correlation Matrix")
         fig = px.imshow(
             corr,
             text_auto=".2f",
-            color_continuous_scale='RdBu',
+            color_continuous_scale=theme_settings['heatmap_colorscale'],
             zmin=-1,
             zmax=1,
             title=f"Feature Correlation Heatmap (Method: {corr_method.title()})"
         )
         fig.update_layout(
+            plot_bgcolor=theme_settings['plot_bgcolor'],
+            paper_bgcolor=theme_settings['paper_bgcolor'],
+            font_color=theme_settings['font_color'],
             margin=dict(l=50, r=50, b=100, t=100),
             xaxis=dict(tickangle=45),
             coloraxis_colorbar=dict(
@@ -280,6 +287,7 @@ def show_correlations(df, col_types):
             hovertemplate="<b>%{y}</b> vs <b>%{x}</b><br>Correlation: %{z:.2f}<extra></extra>"
         )
         st.plotly_chart(fig, use_container_width=True)
+    
     with st.expander("🔍 How to interpret correlations"):
         st.markdown(f"""
         **Interpretation Guide ({corr_method.title()} Correlation)**:
@@ -302,19 +310,38 @@ def show_correlations(df, col_types):
         """)
         st.warning("Note: Correlation ≠ Causation. High correlation may indicate a relationship but doesn't prove one causes the other.")
 
-def show_distributions(df, col_types):
-    """Show distributions for different column types"""
+def show_distributions(df, col_types, theme_settings):
+    """Show distributions for different column types with theme adaptation"""
     st.subheader("Data Distributions")
+    
     if col_types['numeric']:
         st.write("#### Numeric Columns")
         num_col = st.selectbox("Select numeric column", col_types['numeric'])
         col1, col2 = st.columns(2)
+        
         with col1:
-            fig = px.histogram(df, x=num_col, title=f"Distribution of {num_col}")
+            fig = px.histogram(df, x=num_col, title=f"Distribution of {num_col}",
+                              color_discrete_sequence=theme_settings['chart_colors'])
+            fig.update_layout(
+                plot_bgcolor=theme_settings['plot_bgcolor'],
+                paper_bgcolor=theme_settings['paper_bgcolor'],
+                font_color=theme_settings['font_color'],
+                xaxis=dict(gridcolor=theme_settings['grid_color']),
+                yaxis=dict(gridcolor=theme_settings['grid_color'])
+            )
             st.plotly_chart(fig, use_container_width=True)
+        
         with col2:
-            fig = px.box(df, y=num_col, title=f"Box Plot of {num_col}")
+            fig = px.box(df, y=num_col, title=f"Box Plot of {num_col}",
+                        color_discrete_sequence=theme_settings['chart_colors'])
+            fig.update_layout(
+                plot_bgcolor=theme_settings['plot_bgcolor'],
+                paper_bgcolor=theme_settings['paper_bgcolor'],
+                font_color=theme_settings['font_color'],
+                yaxis=dict(gridcolor=theme_settings['grid_color'])
+            )
             st.plotly_chart(fig, use_container_width=True)
+            
             q1 = df[num_col].quantile(0.25)
             q3 = df[num_col].quantile(0.75)
             iqr = q3 - q1
@@ -322,24 +349,41 @@ def show_distributions(df, col_types):
             upper_bound = q3 + 1.5 * iqr
             outliers = df[(df[num_col] < lower_bound) | (df[num_col] > upper_bound)]
             st.info(f"Detected {len(outliers)} outliers using IQR method")
+    
     if col_types['categorical']:
         st.write("#### Categorical Columns")
         cat_col = st.selectbox("Select categorical column", col_types['categorical'])
         value_counts = df[cat_col].value_counts().reset_index()
         value_counts.columns = ['Value', 'Count']
         col1, col2 = st.columns(2)
+        
         with col1:
             fig = px.bar(value_counts, x='Value', y='Count', 
-                        title=f"Distribution of {cat_col}")
+                        title=f"Distribution of {cat_col}",
+                        color='Value',
+                        color_discrete_sequence=theme_settings['chart_colors'])
+            fig.update_layout(
+                plot_bgcolor=theme_settings['plot_bgcolor'],
+                paper_bgcolor=theme_settings['paper_bgcolor'],
+                font_color=theme_settings['font_color'],
+                xaxis=dict(gridcolor=theme_settings['grid_color']),
+                yaxis=dict(gridcolor=theme_settings['grid_color'])
+            )
             st.plotly_chart(fig, use_container_width=True)
+        
         with col2:
             fig = px.pie(value_counts, values='Count', names='Value',
-                        title=f"Proportion of {cat_col}")
+                        title=f"Proportion of {cat_col}",
+                        color_discrete_sequence=theme_settings['chart_colors'])
+            fig.update_layout(
+                plot_bgcolor=theme_settings['plot_bgcolor'],
+                paper_bgcolor=theme_settings['paper_bgcolor'],
+                font_color=theme_settings['font_color']
+            )
             st.plotly_chart(fig, use_container_width=True)
 
-def show_time_series(df, col_types):
-    theme_settings = adapt_to_theme()
-    """Show time series analysis with updated resample codes"""
+def show_time_series(df, col_types, theme_settings):
+    """Show time series analysis with theme adaptation"""
     if not col_types['datetime']:
         return
     
@@ -363,39 +407,54 @@ def show_time_series(df, col_types):
         list(resample_options.keys()),
         key='ts_resample_freq'
     )
+    
     ts_df = df.set_index(date_col)[value_col]\
              .resample(resample_options[selected_freq])\
              .mean()\
              .reset_index()
     
     fig = px.line(ts_df, x=date_col, y=value_col, 
-                 title=f"{value_col} over Time")
+                 title=f"{value_col} over Time",
+                 color_discrete_sequence=theme_settings['chart_colors'])
+    
     fig.update_layout(
         plot_bgcolor=theme_settings['plot_bgcolor'],
         paper_bgcolor=theme_settings['paper_bgcolor'],
         font_color=theme_settings['font_color'],
-        xaxis=dict(gridcolor=theme_settings['grid_color']),
-        yaxis=dict(gridcolor=theme_settings['grid_color'])
+        xaxis=dict(
+            gridcolor=theme_settings['grid_color'],
+            zerolinecolor=theme_settings['zero_line_color']
+        ),
+        yaxis=dict(
+            gridcolor=theme_settings['grid_color'],
+            zerolinecolor=theme_settings['zero_line_color']
+        )
     )
     
     st.plotly_chart(fig, use_container_width=True)
 
-def safe_display_dataframe(df, height=None):
-    theme_settings = adapt_to_theme()
+def safe_display_dataframe(df, height=None, theme_settings=None):
+    """Helper function to safely display dataframes with theme adaptation"""
     display_df = df.copy()
+    for col in display_df.columns:
+        if not (pd.api.types.is_numeric_dtype(display_df[col]) or 
+                pd.api.types.is_datetime64_any_dtype(display_df[col])):
+            display_df[col] = display_df[col].astype(str)
     
-    # Apply theme-aware styling
-    styled_df = display_df.style.set_properties(**{
-        'background-color': theme_settings['table_cell_color'],
-        'color': theme_settings['text_color']
-    })
-    
-    st.dataframe(styled_df, height=height, use_container_width=True)
+    if theme_settings:
+        styled_df = display_df.style.set_properties(**{
+            'background-color': theme_settings['table_cell_color'],
+            'color': theme_settings['text_color']
+        })
+        st.dataframe(styled_df, height=height, use_container_width=True)
+    else:
+        st.dataframe(display_df, height=height, use_container_width=True)
 
 def create_filters(df, col_types):
     """Create dynamic filters in sidebar"""
     st.sidebar.header("Filters")
     date_col = df.select_dtypes(include=['datetime']).columns.tolist()
+    
     if date_col:
         selected_date_col = st.sidebar.selectbox("Select date column for filtering", date_col)
         min_date = df[selected_date_col].min()
@@ -422,6 +481,7 @@ def create_filters(df, col_types):
             min_val, max_val, (min_val, max_val)
         )
         df = df[(df[col] >= values[0]) & (df[col] <= values[1])]
+    
     for col in col_types['categorical'][:3]:
         options = df[col].unique().tolist()
         selected = st.sidebar.multiselect(
@@ -434,21 +494,22 @@ def create_filters(df, col_types):
     
     return df
 
-def show_data_preview(df):
-    """Show interactive data preview with dynamic features"""
+def show_data_preview(df, theme_settings):
+    """Show interactive data preview with theme adaptation"""
     st.subheader("📊 Data Preview")
     if len(df) > 10000:
         st.warning("Large dataset detected! Showing sample of 10,000 rows.")
         sample_df = df.sample(10000)
     else:
         sample_df = df.copy()
+    
     tab1, tab2, tab3 = st.tabs(["Interactive Explorer", "Quick Stats", "Data Types"])
+    
     with tab1:
         height = min(600, 100 + len(sample_df) * 25)
         filtered_df = dataframe_explorer(sample_df)
-        st.dataframe(filtered_df, 
-                    use_container_width=True, 
-                    height=height)
+        safe_display_dataframe(filtered_df, height=height, theme_settings=theme_settings)
+        
         col1, col2 = st.columns(2)
         with col1:
             st.download_button(
@@ -464,16 +525,26 @@ def show_data_preview(df):
                 file_name='full_data.csv',
                 mime='text/csv'
             )
+    
     with tab2:
         st.write("### Descriptive Statistics")
         stat_tabs = st.tabs(["Numerical", "Categorical", "All Columns"]) 
+        
         with stat_tabs[0]:
             num_cols = df.select_dtypes(include=np.number).columns
             if len(num_cols) > 0:
-                st.dataframe(df[num_cols].describe().T.style.background_gradient(cmap='Blues'),
-                            use_container_width=True)
+                st.dataframe(
+                    df[num_cols].describe().T.style
+                    .background_gradient(cmap='Blues')
+                    .set_properties(**{
+                        'background-color': theme_settings['table_cell_color'],
+                        'color': theme_settings['text_color']
+                    }),
+                    use_container_width=True
+                )
             else:
                 st.warning("No numerical columns found")
+        
         with stat_tabs[1]:
             cat_cols = df.select_dtypes(include=['object', 'category']).columns
             if len(cat_cols) > 0:
@@ -482,13 +553,29 @@ def show_data_preview(df):
                     'Most Common': df[cat_cols].apply(lambda x: x.mode()[0] if len(x.mode()) > 0 else 'N/A'),
                     'Frequency': df[cat_cols].apply(lambda x: x.value_counts().iloc[0] if len(x.value_counts()) > 0 else 0)
                 })
-                st.dataframe(cat_stats.style.background_gradient(cmap='Greens'),
-                            use_container_width=True)
+                st.dataframe(
+                    cat_stats.style
+                    .background_gradient(cmap='Greens')
+                    .set_properties(**{
+                        'background-color': theme_settings['table_cell_color'],
+                        'color': theme_settings['text_color']
+                    }),
+                    use_container_width=True
+                )
             else:
                 st.warning("No categorical columns found")
+        
         with stat_tabs[2]:
-            st.dataframe(df.describe(include='all').T.style.background_gradient(cmap='Purples'),
-                        use_container_width=True)    
+            st.dataframe(
+                df.describe(include='all').T.style
+                .background_gradient(cmap='Purples')
+                .set_properties(**{
+                    'background-color': theme_settings['table_cell_color'],
+                    'color': theme_settings['text_color']
+                }),
+                use_container_width=True
+            )
+    
     with tab3:
         st.write("### Data Types Overview")
         dtype_info = pd.DataFrame({
@@ -497,12 +584,23 @@ def show_data_preview(df):
             'Missing Values': df.isna().sum(),
             '% Missing': (df.isna().mean() * 100).round(2),
             'Unique Values': df.nunique()
-        }).sort_values(by='Type')        
-        st.dataframe(dtype_info.style.bar(subset=['% Missing'], color='#ff6961'))
+        }).sort_values(by='Type')
+        
+        st.dataframe(
+            dtype_info.style
+            .bar(subset=['% Missing'], color=theme_settings['outlier_color'])
+            .set_properties(**{
+                'background-color': theme_settings['table_cell_color'],
+                'color': theme_settings['text_color']
+            }),
+            use_container_width=True
+        )
+        
         st.write(f"**Memory Usage:** {df.memory_usage(deep=True).sum() / (1024 ** 2):.2f} MB")
 
-def show_correlation_visualizations(df, col_types):
-    # Helper function to identify date columns
+def show_correlation_visualizations(df, col_types, theme_settings):
+    """Enhanced correlation visualizations with theme adaptation"""
+    
     def get_date_column(df):
         date_cols = [col for col in df.columns if 'date' in col.lower() or 'time' in col.lower()]
         if date_cols:
@@ -551,7 +649,16 @@ def show_correlation_visualizations(df, col_types):
                         with col1:
                             top_items = df.groupby(col)[sales_metric].sum().nlargest(5).reset_index()
                             fig = px.bar(top_items, x=col, y=sales_metric, 
-                                        color=col, title=f"Top {col} by {sales_metric}")
+                                        color=col, 
+                                        title=f"Top {col} by {sales_metric}",
+                                        color_discrete_sequence=theme_settings['chart_colors'])
+                            fig.update_layout(
+                                plot_bgcolor=theme_settings['plot_bgcolor'],
+                                paper_bgcolor=theme_settings['paper_bgcolor'],
+                                font_color=theme_settings['font_color'],
+                                xaxis=dict(gridcolor=theme_settings['grid_color']),
+                                yaxis=dict(gridcolor=theme_settings['grid_color'])
+                            )
                             st.plotly_chart(fig, use_container_width=True, key=f"top_performers_chart_{i}")
                         with col2:
                             st.markdown("### Key Insight")
@@ -618,7 +725,15 @@ def show_correlation_visualizations(df, col_types):
                 
             with trend_col2:
                 fig = px.line(trend_data, x=x_col, y=selected_metric, 
-                             title=f"{time_groups} Trend of {selected_metric}")
+                             title=f"{time_groups} Trend of {selected_metric}",
+                             color_discrete_sequence=theme_settings['chart_colors'])
+                fig.update_layout(
+                    plot_bgcolor=theme_settings['plot_bgcolor'],
+                    paper_bgcolor=theme_settings['paper_bgcolor'],
+                    font_color=theme_settings['font_color'],
+                    xaxis=dict(gridcolor=theme_settings['grid_color']),
+                    yaxis=dict(gridcolor=theme_settings['grid_color'])
+                )
                 st.plotly_chart(fig, use_container_width=True, key="trend_line_chart")
         else:
             st.warning("Date column or sales metric not found for trend analysis")
@@ -640,15 +755,32 @@ def show_correlation_visualizations(df, col_types):
                 
                 st.markdown("### Statistics")
                 stats = df[dist_col].describe()
-                st.dataframe(pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#fffd75'))
+                st.dataframe(
+                    pd.DataFrame(stats).T
+                    .style.highlight_max(axis=1, color='#fffd75')
+                    .set_properties(**{
+                        'background-color': theme_settings['table_cell_color'],
+                        'color': theme_settings['text_color']
+                    })
+                )
             
             with dist_col2:
                 if cat_cols and group_col != 'None':
                     fig = px.box(df, x=group_col, y=dist_col, color=group_col,
-                                title=f"Distribution of {dist_col} by {group_col}")
+                                title=f"Distribution of {dist_col} by {group_col}",
+                                color_discrete_sequence=theme_settings['chart_colors'])
                 else:
                     fig = px.histogram(df, x=dist_col, 
-                                      title=f"Distribution of {dist_col}")
+                                      title=f"Distribution of {dist_col}",
+                                      color_discrete_sequence=theme_settings['chart_colors'])
+                
+                fig.update_layout(
+                    plot_bgcolor=theme_settings['plot_bgcolor'],
+                    paper_bgcolor=theme_settings['paper_bgcolor'],
+                    font_color=theme_settings['font_color'],
+                    xaxis=dict(gridcolor=theme_settings['grid_color']),
+                    yaxis=dict(gridcolor=theme_settings['grid_color'])
+                )
                 st.plotly_chart(fig, use_container_width=True, key="distribution_chart")
         else:
             st.warning("No numeric columns found for distribution analysis")
