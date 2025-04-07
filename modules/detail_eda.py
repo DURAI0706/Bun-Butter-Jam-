@@ -186,7 +186,7 @@ def show_missing_values(df, theme_settings):
         missing_df['Missing %'] = (missing_df['Missing Count'] / len(df)) * 100
         st.dataframe(
             missing_df.sort_values('Missing %', ascending=False).style
-            .background_gradient(cmap='Reds')
+            .background_gradient(cmap='Reds'))
     with col2:
         fig = px.imshow(df.isna(),
                        color_continuous_scale='gray',
