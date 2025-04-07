@@ -9,6 +9,47 @@ from sklearn.preprocessing import LabelEncoder
 from statsmodels.tsa.seasonal import seasonal_decompose
 from plotly.subplots import make_subplots
 
+def adapt_to_theme():
+    """Detect Streamlit theme and return appropriate color settings"""
+    # Try to get the current theme from Streamlit config
+    try:
+        from streamlit import config
+        theme = config.get_option("theme.base")
+    except:
+        theme = "light"  # Default to light theme if detection fails
+    
+    # Color settings for both themes
+    if theme == "dark":
+        return {
+            'bg_color': 'rgba(0, 0, 0, 0)',
+            'text_color': '#FFFFFF',
+            'plot_bgcolor': 'rgba(0, 0, 0, 0)',
+            'paper_bgcolor': 'rgba(0, 0, 0, 0)',
+            'grid_color': 'rgba(255, 255, 255, 0.1)',
+            'font_color': 'white',
+            'metric_label_color': 'white',
+            'metric_value_color': 'white',
+            'chart_colors': px.colors.sequential.Plasma,
+            'heatmap_colorscale': 'Plasma',
+            'table_header_color': 'rgba(49, 51, 63, 0.6)',
+            'table_cell_color': 'rgba(49, 51, 63, 0.2)'
+        }
+    else:  # light theme
+        return {
+            'bg_color': 'rgba(255, 255, 255, 0)',
+            'text_color': '#31333F',
+            'plot_bgcolor': 'rgba(255, 255, 255, 0)',
+            'paper_bgcolor': 'rgba(255, 255, 255, 0)',
+            'grid_color': 'rgba(0, 0, 0, 0.1)',
+            'font_color': 'black',
+            'metric_label_color': '#31333F',
+            'metric_value_color': '#31333F',
+            'chart_colors': px.colors.sequential.Blues,
+            'heatmap_colorscale': 'Blues',
+            'table_header_color': 'rgba(221, 221, 221, 0.6)',
+            'table_cell_color': 'rgba(221, 221, 221, 0.2)'
+        }
+        
 @st.cache_data
 def load_data(uploaded_file=None):
     """Load data from uploaded file or default CSV with caching"""
@@ -91,23 +132,23 @@ def generate_kpis(df, col_types):
     return kpis
 
 def style_metric_cards():
-    """Apply custom CSS to style metric cards with transparency."""
+    theme_settings = adapt_to_theme()
     st.markdown(
-        """
+        f"""
         <style>
-            /* Transparent KPI Card Background */
-            div[data-testid="metric-container"] {
-                background: rgba(255, 255, 255, 0.1); /* Light transparency */
+            div[data-testid="metric-container"] {{
+                background: rgba(255, 255, 255, 0.08);
                 border-radius: 10px;
                 padding: 10px;
                 border: 1px solid rgba(255, 255, 255, 0.2);
                 box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
-            }
-            /* Center align the text inside KPI cards */
-            div[data-testid="metric-container"] > div {
-                align-items: center;
-                justify-content: center;
-            }
+            }}
+            div[data-testid="metric-container"] > div {{
+                color: {theme_settings['metric_value_color']};
+            }}
+            div[data-testid="metric-container"] label {{
+                color: {theme_settings['metric_label_color']};
+            }}
         </style>
         """,
         unsafe_allow_html=True
@@ -145,6 +186,22 @@ def show_missing_values(df):
         st.plotly_chart(fig, use_container_width=True)
 
 def show_correlations(df, col_types):
+    theme_settings = adapt_to_theme()  # Get theme settings
+    
+    # Then use these settings in your plots:
+    fig = px.imshow(
+        corr,
+        text_auto=".2f",
+        color_continuous_scale=theme_settings['heatmap_colorscale'],
+        zmin=-1,
+        zmax=1,
+        title=f"Feature Correlation Heatmap (Method: {corr_method.title()})"
+    )
+    fig.update_layout(
+        plot_bgcolor=theme_settings['plot_bgcolor'],
+        paper_bgcolor=theme_settings['paper_bgcolor'],
+        font_color=theme_settings['font_color']
+    )
     """
     Enhanced correlation analysis with label encoding for categorical columns
     Combines the best features of both versions with error fixes
@@ -281,6 +338,7 @@ def show_distributions(df, col_types):
             st.plotly_chart(fig, use_container_width=True)
 
 def show_time_series(df, col_types):
+    theme_settings = adapt_to_theme()
     """Show time series analysis with updated resample codes"""
     if not col_types['datetime']:
         return
@@ -312,17 +370,27 @@ def show_time_series(df, col_types):
     
     fig = px.line(ts_df, x=date_col, y=value_col, 
                  title=f"{value_col} over Time")
+    fig.update_layout(
+        plot_bgcolor=theme_settings['plot_bgcolor'],
+        paper_bgcolor=theme_settings['paper_bgcolor'],
+        font_color=theme_settings['font_color'],
+        xaxis=dict(gridcolor=theme_settings['grid_color']),
+        yaxis=dict(gridcolor=theme_settings['grid_color'])
+    )
+    
     st.plotly_chart(fig, use_container_width=True)
 
 def safe_display_dataframe(df, height=None):
-    """Helper function to safely display dataframes with consistent types"""
+    theme_settings = adapt_to_theme()
     display_df = df.copy()
-    for col in display_df.columns:
-        if not (pd.api.types.is_numeric_dtype(display_df[col]) or 
-                pd.api.types.is_datetime64_any_dtype(display_df[col])):
-            display_df[col] = display_df[col].astype(str)
     
-    st.dataframe(display_df, height=height, use_container_width=True)
+    # Apply theme-aware styling
+    styled_df = display_df.style.set_properties(**{
+        'background-color': theme_settings['table_cell_color'],
+        'color': theme_settings['text_color']
+    })
+    
+    st.dataframe(styled_df, height=height, use_container_width=True)
 
 def create_filters(df, col_types):
     """Create dynamic filters in sidebar"""
@@ -773,7 +841,8 @@ def show_correlation_visualizations(df, col_types):
 
 def main():
     st.title("📊 Detailed Exploratory Data Analysis")
-    
+    theme_settings = adapt_to_theme()  # Get theme settings
+
     uploaded_file = st.sidebar.file_uploader(
         "Upload CSV or Excel file (optional, defaults to Coronation Bakery Dataset)",
         type=["csv", "xlsx", "xls"]
