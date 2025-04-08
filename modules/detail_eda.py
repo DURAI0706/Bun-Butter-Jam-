@@ -795,8 +795,6 @@ def main():
     # REMOVE this line: df = load_data(df)
     col_types = detect_column_types(df)
     df = create_filters(df, col_types)
-    col_types = detect_column_types(df)
-    df = create_filters(df, col_types)
 
     st.sidebar.success(f"✅ {len(df)} rows × {len(df.columns)} columns")
     st.header(f"Dataset Overview: {dataset_name}")
