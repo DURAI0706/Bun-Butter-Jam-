@@ -14,15 +14,29 @@ def load_data(uploaded_file=None):
     """Load data from uploaded file or default CSV with caching"""
     try:
         if uploaded_file is not None:
+            # Handle user uploaded files
             if uploaded_file.name.endswith('.csv'):
                 df = pd.read_csv(uploaded_file)
             else:
                 df = pd.read_excel(uploaded_file)
         else:
-            df = pd.read_csv("Coronation Bakery Dataset.csv")  # Default dataset
+            # Load default data file from specific path
+            file_path = os.path.join('data', 'Coronation_Bakery_version_3.csv')
+            if not os.path.exists(file_path):
+                st.error(f"Data file not found at: {file_path}")
+                st.info("Please ensure your CSV file is in the 'data' directory and named 'Coronation_Bakery_version_3.csv'")
+                return None
+            df = pd.read_csv(file_path)
+        
+        # Process date columns properly regardless of source
+        if 'Date' in df.columns:
+            df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y', errors='coerce')
+        
+        # Store in session state
+        st.session_state['sales_data'] = df
         return df
     except Exception as e:
-        st.error(f"Error loading file: {str(e)}")
+        st.error(f"Error loading data: {e}")
         return None
     
 def convert_to_datetime(df):
