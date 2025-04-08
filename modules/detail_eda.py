@@ -11,36 +11,35 @@ from plotly.subplots import make_subplots
 import os
 
 @st.cache_data
-def load_data():
+def load_data(uploaded_file=None):
+    """Load data from uploaded file or default CSV with caching"""
     try:
-        file_path = os.path.join('data', 'Coronation_Bakery_version_3.csv')
-        if not os.path.exists(file_path):
-            st.error(f"Data file not found at: {file_path}")
-            st.info("Please ensure your CSV file is in the 'data' directory and named 'Coronation_Bakery_version_3.csv'")
-            return None
-        df = pd.read_csv(file_path)
-        # Explicitly specify the day-first format to avoid warnings
-        df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y', dayfirst=True)
+        if uploaded_file is not None:
+            # Handle user uploaded files
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file)
+        else:
+            # Load default data file from specific path
+            file_path = os.path.join('data', 'Coronation_Bakery_version_3.csv')
+            if not os.path.exists(file_path):
+                st.error(f"Data file not found at: {file_path}")
+                st.info("Please ensure your CSV file is in the 'data' directory and named 'Coronation_Bakery_version_3.csv'")
+                return None
+            df = pd.read_csv(file_path)
+        
+        # Process date columns properly regardless of source
+        if 'Date' in df.columns:
+            df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y', errors='coerce')
+        
+        # Store in session state
         st.session_state['sales_data'] = df
         return df
     except Exception as e:
         st.error(f"Error loading data: {e}")
         return None
 
-def prepare_df_for_explorer(df):
-    """Prepare dataframe for explorer by explicitly formatting date columns"""
-    df_copy = df.copy()
-    # Try to convert all object columns that might be dates
-    for col in df_copy.select_dtypes(include=['object']).columns:
-        try:
-            # Check if column contains date-like strings
-            sample = df_copy[col].dropna().iloc[0] if not df_copy[col].dropna().empty else ""
-            if isinstance(sample, str) and any(c in sample for c in ['/', '-', ':']):
-                df_copy[col] = pd.to_datetime(df_copy[col], errors='ignore')
-        except:
-            pass
-    return df_copy
-    
 def detect_column_types(df):
     """Detect column types and return categorized lists"""
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
@@ -794,8 +793,7 @@ def main():
     # Continue with EDA
     # Continue with EDA
     # REMOVE this line: df = load_data(df)
-    df_for_explorer = prepare_df_for_explorer(df)
-    filtered_df = dataframe_explorer(df_for_explorer)
+    filtered_df = dataframe_explorer(df)
     col_types = detect_column_types(df)
     df = create_filters(df, col_types)
 
