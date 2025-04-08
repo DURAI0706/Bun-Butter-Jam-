@@ -40,6 +40,20 @@ def load_data(uploaded_file=None):
         st.error(f"Error loading data: {e}")
         return None
 
+def prepare_df_for_explorer(df):
+    """Prepare dataframe for explorer by explicitly formatting date columns"""
+    df_copy = df.copy()
+    # Try to convert all object columns that might be dates
+    for col in df_copy.select_dtypes(include=['object']).columns:
+        try:
+            # Check if column contains date-like strings
+            sample = df_copy[col].dropna().iloc[0] if not df_copy[col].dropna().empty else ""
+            if isinstance(sample, str) and any(c in sample for c in ['/', '-', ':']):
+                df_copy[col] = pd.to_datetime(df_copy[col], errors='ignore')
+        except:
+            pass
+    return df_copy
+    
 def detect_column_types(df):
     """Detect column types and return categorized lists"""
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
@@ -793,7 +807,8 @@ def main():
     # Continue with EDA
     # Continue with EDA
     # REMOVE this line: df = load_data(df)
-    filtered_df = dataframe_explorer(df)
+    df_for_explorer = prepare_df_for_explorer(df)
+    filtered_df = dataframe_explorer(df_for_explorer)
     col_types = detect_column_types(df)
     df = create_filters(df, col_types)
 
