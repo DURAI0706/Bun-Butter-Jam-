@@ -1960,7 +1960,7 @@ def main():
         col_types = detect_column_types(df)
         
         # Apply filters
-        df = create_filters(df, col_types)
+        df = create_filters(df, col_types, theme_config)
     
     # Show dataset info in sidebar
     with st.sidebar:
