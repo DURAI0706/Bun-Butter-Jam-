@@ -791,7 +791,10 @@ def main():
         st.sidebar.info("📂 Using default: Coronation Bakery Dataset.csv")
 
     # Continue with EDA
-    df = load_data(df)
+    # Continue with EDA
+    # REMOVE this line: df = load_data(df)
+    col_types = detect_column_types(df)
+    df = create_filters(df, col_types)
     col_types = detect_column_types(df)
     df = create_filters(df, col_types)
 
