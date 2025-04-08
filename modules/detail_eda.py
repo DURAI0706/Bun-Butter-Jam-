@@ -9,10 +9,6 @@ from sklearn.preprocessing import LabelEncoder
 from statsmodels.tsa.seasonal import seasonal_decompose
 from plotly.subplots import make_subplots
 
-
-def apply_dark_theme():
-    st.markdown(""" unsafe_allow_html=True)
-
 @st.cache_data
 def load_data(uploaded_file=None):
     """Load data from uploaded file or default CSV with caching"""
@@ -776,7 +772,6 @@ def show_correlation_visualizations(df, col_types):
                         st.plotly_chart(fig, use_container_width=True, key="sunburst_chart")
 
 def main():
-    apply_dark_theme()
     st.title("📊 Detailed Exploratory Data Analysis")
     
     uploaded_file = st.sidebar.file_uploader(
