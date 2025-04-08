@@ -1011,7 +1011,7 @@ def show_data_preview(df, theme_config):
         - **Memory Usage**: {df.memory_usage(deep=True).sum() / (1024 ** 2):.2f} MB
         """)
 
-def show_correlation_visualizations(df, col_types):
+def show_correlation_visualizations(df, col_types, theme_config):
     """Enhanced correlation visualizations with professional presentation"""
     st.subheader("✨ Advanced Analytics")
     st.markdown("Interactive visualizations to explore relationships in your data")
@@ -1066,13 +1066,15 @@ def show_correlation_visualizations(df, col_types):
                             top_items = df.groupby(col)[sales_metric].sum().nlargest(10).reset_index()
                             
                             # Create bar chart
-                            fig = px.bar(top_items, 
-                                        x=col, 
-                                        y=sales_metric, 
-                                        color=col,
-                                        title=f"Top {col} by {sales_metric}",
-                                        text=sales_metric,
-                                        color_discrete_sequence=px.colors.qualitative.Pastel)
+                            fig = px.bar(
+                                top_items, 
+                                x=col, 
+                                y=sales_metric, 
+                                color=col,
+                                title=f"Top {col} by {sales_metric}",
+                                text=sales_metric,
+                                color_discrete_sequence=px.colors.qualitative.Pastel
+                            )
                             
                             # Format the chart
                             fig.update_layout(
@@ -1080,7 +1082,10 @@ def show_correlation_visualizations(df, col_types):
                                 yaxis_title=sales_metric,
                                 showlegend=False,
                                 uniformtext_minsize=8,
-                                uniformtext_mode='hide'
+                                uniformtext_mode='hide',
+                                plot_bgcolor=theme_config['plot_bgcolor'],
+                                paper_bgcolor=theme_config['paper_bgcolor'],
+                                font=dict(color=theme_config['font_color'])
                             )
                             
                             # Format the text on bars
@@ -1218,7 +1223,8 @@ def show_correlation_visualizations(df, col_types):
                     x=x_col, 
                     y=selected_metric, 
                     title=f"{time_groups} Trend of {selected_metric}",
-                    markers=True
+                    markers=True,
+                    color_discrete_sequence=[theme_config['primary_color']]
                 )
                 
                 # Add rolling average
@@ -1238,7 +1244,10 @@ def show_correlation_visualizations(df, col_types):
                     xaxis_title="Time Period",
                     yaxis_title=selected_metric,
                     hovermode="x unified",
-                    showlegend=True
+                    showlegend=True,
+                    plot_bgcolor=theme_config['plot_bgcolor'],
+                    paper_bgcolor=theme_config['paper_bgcolor'],
+                    font=dict(color=theme_config['font_color'])
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
@@ -1265,7 +1274,7 @@ def show_correlation_visualizations(df, col_types):
                                     x=decomposition.observed.index,
                                     y=decomposition.observed,
                                     name='Observed',
-                                    line=dict(color='#3498db')
+                                    line=dict(color=theme_config['primary_color'])
                                 ), 
                                 row=1, col=1
                             )
@@ -1275,7 +1284,7 @@ def show_correlation_visualizations(df, col_types):
                                     x=decomposition.trend.index,
                                     y=decomposition.trend,
                                     name='Trend',
-                                    line=dict(color='#e74c3c')
+                                    line=dict(color=theme_config['secondary_color'])
                                 ), 
                                 row=2, col=1
                             )
@@ -1285,7 +1294,7 @@ def show_correlation_visualizations(df, col_types):
                                     x=decomposition.seasonal.index,
                                     y=decomposition.seasonal,
                                     name='Seasonal',
-                                    line=dict(color='#2ecc71')
+                                    line=dict(color=theme_config['accent_color'])
                                 ), 
                                 row=3, col=1
                             )
@@ -1303,7 +1312,10 @@ def show_correlation_visualizations(df, col_types):
                             decomp_fig.update_layout(
                                 height=600,
                                 showlegend=False,
-                                title_text="Time Series Decomposition"
+                                title_text="Time Series Decomposition",
+                                plot_bgcolor=theme_config['plot_bgcolor'],
+                                paper_bgcolor=theme_config['paper_bgcolor'],
+                                font=dict(color=theme_config['font_color'])
                             )
                             
                             st.plotly_chart(decomp_fig, use_container_width=True)
@@ -1370,13 +1382,16 @@ def show_correlation_visualizations(df, col_types):
                             title=f"Distribution of {dist_col}",
                             marginal="box",
                             nbins=50,
-                            color_discrete_sequence=['#3498db']
+                            color_discrete_sequence=[theme_config['primary_color']]
                         )
                     
                     fig.update_layout(
                         showlegend=False,
                         xaxis_title=dist_col,
-                        yaxis_title="Count"
+                        yaxis_title="Count",
+                        plot_bgcolor=theme_config['plot_bgcolor'],
+                        paper_bgcolor=theme_config['paper_bgcolor'],
+                        font=dict(color=theme_config['font_color'])
                     )
                     
                     st.plotly_chart(fig, use_container_width=True)
@@ -1408,6 +1423,12 @@ def show_correlation_visualizations(df, col_types):
                         textinfo='percent+label',
                         marker=dict(line=dict(color='#ffffff', width=1))
                     )
+                    fig1.update_layout(
+                        plot_bgcolor=theme_config['plot_bgcolor'],
+                        paper_bgcolor=theme_config['paper_bgcolor'],
+                        font=dict(color=theme_config['font_color'])
+                    )
+                    
                     st.plotly_chart(fig1, use_container_width=True)
                 
                 with comp_col2:
@@ -1417,6 +1438,11 @@ def show_correlation_visualizations(df, col_types):
                             path=cat_cols[:2], 
                             values=sales_metric,
                             title=f"Hierarchical View of {sales_metric}"
+                        )
+                        fig2.update_layout(
+                            plot_bgcolor=theme_config['plot_bgcolor'],
+                            paper_bgcolor=theme_config['paper_bgcolor'],
+                            font=dict(color=theme_config['font_color'])
                         )
                         
                         st.plotly_chart(fig2, use_container_width=True)
@@ -1502,13 +1528,16 @@ def show_correlation_visualizations(df, col_types):
                             title=f"{x_col} vs {y_col}",
                             trendline="ols" if show_trendline else None,
                             opacity=0.7,
-                            color_discrete_sequence=['#3498db']
+                            color_discrete_sequence=[theme_config['primary_color']]
                         )
                     
                     fig.update_layout(
                         xaxis_title=x_col,
                         yaxis_title=y_col,
-                        hovermode="closest"
+                        hovermode="closest",
+                        plot_bgcolor=theme_config['plot_bgcolor'],
+                        paper_bgcolor=theme_config['paper_bgcolor'],
+                        font=dict(color=theme_config['font_color'])
                     )
                     
                     st.plotly_chart(fig, use_container_width=True)
@@ -1540,7 +1569,10 @@ def show_correlation_visualizations(df, col_types):
                         fig.update_layout(
                             height=600,
                             xaxis_title="",
-                            yaxis_title=""
+                            yaxis_title="",
+                            plot_bgcolor=theme_config['plot_bgcolor'],
+                            paper_bgcolor=theme_config['paper_bgcolor'],
+                            font=dict(color=theme_config['font_color'])
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
@@ -1590,7 +1622,12 @@ def show_correlation_visualizations(df, col_types):
                                 title="Correlation Matrix"
                             )
                             
-                            fig.update_layout(height=600)
+                            fig.update_layout(
+                                height=600,
+                                plot_bgcolor=theme_config['plot_bgcolor'],
+                                paper_bgcolor=theme_config['paper_bgcolor'],
+                                font=dict(color=theme_config['font_color'])
+                            )
                             st.plotly_chart(fig, use_container_width=True)
                     
                     adv_tab_idx += 1
@@ -1620,7 +1657,8 @@ def show_correlation_visualizations(df, col_types):
                                         y='Value',
                                         color='Metric',
                                         title="Normalized Metric Comparison",
-                                        line_shape="spline"
+                                        line_shape="spline",
+                                        color_discrete_sequence=px.colors.qualitative.Pastel
                                     )
                                 else:
                                     melt_df = norm_df.reset_index().melt(id_vars='index', var_name='Metric', value_name='Value')
@@ -1630,13 +1668,17 @@ def show_correlation_visualizations(df, col_types):
                                         x='index',
                                         y='Value',
                                         color='Metric',
-                                        title="Normalized Metric Comparison"
+                                        title="Normalized Metric Comparison",
+                                        color_discrete_sequence=px.colors.qualitative.Pastel
                                     )
                                 
                                 fig.update_layout(
                                     xaxis_title="Time" if date_col else "Index",
                                     yaxis_title="Normalized Value",
-                                    legend_title="Metric"
+                                    legend_title="Metric",
+                                    plot_bgcolor=theme_config['plot_bgcolor'],
+                                    paper_bgcolor=theme_config['paper_bgcolor'],
+                                    font=dict(color=theme_config['font_color'])
                                 )
                                 
                                 st.plotly_chart(fig, use_container_width=True)
@@ -1673,7 +1715,7 @@ def show_correlation_visualizations(df, col_types):
                                     x=ts_df.index, 
                                     y=ts_df, 
                                     name='Observed',
-                                    line=dict(color='#3498db')
+                                    line=dict(color=theme_config['primary_color'])
                                 ), 
                                 row=1, col=1
                             )
@@ -1683,7 +1725,7 @@ def show_correlation_visualizations(df, col_types):
                                     x=decomposition.trend.index, 
                                     y=decomposition.trend, 
                                     name='Trend',
-                                    line=dict(color='#e74c3c')
+                                    line=dict(color=theme_config['secondary_color'])
                                 ), 
                                 row=2, col=1
                             )
@@ -1693,7 +1735,7 @@ def show_correlation_visualizations(df, col_types):
                                     x=decomposition.seasonal.index, 
                                     y=decomposition.seasonal, 
                                     name='Seasonal',
-                                    line=dict(color='#2ecc71')
+                                    line=dict(color=theme_config['accent_color'])
                                 ), 
                                 row=3, col=1
                             )
@@ -1711,7 +1753,10 @@ def show_correlation_visualizations(df, col_types):
                             fig.update_layout(
                                 height=600, 
                                 title_text="Time Series Decomposition",
-                                showlegend=False
+                                showlegend=False,
+                                plot_bgcolor=theme_config['plot_bgcolor'],
+                                paper_bgcolor=theme_config['paper_bgcolor'],
+                                font=dict(color=theme_config['font_color'])
                             )
                             
                             st.plotly_chart(fig, use_container_width=True)
@@ -1747,7 +1792,10 @@ def show_correlation_visualizations(df, col_types):
                         fig.update_layout(
                             xaxis_title="Date",
                             yaxis_title=metric_col,
-                            legend_title=comp_col
+                            legend_title=comp_col,
+                            plot_bgcolor=theme_config['plot_bgcolor'],
+                            paper_bgcolor=theme_config['paper_bgcolor'],
+                            font=dict(color=theme_config['font_color'])
                         )
                         
                         st.plotly_chart(fig, use_container_width=True)
@@ -1799,7 +1847,10 @@ def show_correlation_visualizations(df, col_types):
                             
                             fig.update_layout(
                                 margin=dict(l=0, r=0, b=0, t=30),
-                                height=600
+                                height=600,
+                                plot_bgcolor=theme_config['plot_bgcolor'],
+                                paper_bgcolor=theme_config['paper_bgcolor'],
+                                font=dict(color=theme_config['font_color'])
                             )
                             
                             st.plotly_chart(fig, use_container_width=True)
@@ -1824,11 +1875,19 @@ def show_correlation_visualizations(df, col_types):
                                 title=f"Hierarchical View of {sales_metric}",
                                 color_discrete_sequence=px.colors.qualitative.Pastel
                             )
+                            fig.update_layout(
+                                plot_bgcolor=theme_config['plot_bgcolor'],
+                                paper_bgcolor=theme_config['paper_bgcolor'],
+                                font=dict(color=theme_config['font_color'])
+                            )
                             
                             st.plotly_chart(fig, use_container_width=True)
 
 def main():
-    # Apply professional theme and styling
+    # Get theme configuration
+    theme_config = get_theme_config()
+    
+    # Apply professional theme
     apply_professional_theme(theme_config)
     
     # Set up the page configuration
