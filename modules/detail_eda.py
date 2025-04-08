@@ -666,6 +666,7 @@ def show_distributions(df, col_types, theme_config):
                 textposition='inside',
                 textinfo='percent+label',
                 marker=dict(line=dict(color='#ffffff', width=1))
+            )
             fig.update_layout(
                 plot_bgcolor=theme_config['plot_bgcolor'],
                 paper_bgcolor=theme_config['paper_bgcolor'],
