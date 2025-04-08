@@ -793,6 +793,7 @@ def main():
     # Continue with EDA
     # Continue with EDA
     # REMOVE this line: df = load_data(df)
+    filtered_df = dataframe_explorer(df)
     col_types = detect_column_types(df)
     df = create_filters(df, col_types)
 
