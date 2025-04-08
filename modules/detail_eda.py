@@ -9,146 +9,226 @@ from sklearn.preprocessing import LabelEncoder
 from statsmodels.tsa.seasonal import seasonal_decompose
 from plotly.subplots import make_subplots
 
-# Custom CSS for professional styling
-def apply_professional_theme():
-    """Apply a professional theme with custom CSS"""
+# Theme detection and configuration
+def get_theme_config():
+    """Detect Streamlit theme and return appropriate color settings"""
+    # Try to get the current theme from Streamlit config
+    try:
+        theme = st._config.get_option("theme.base")
+        if theme == "dark":
+            return {
+                'bg_color': 'rgba(0, 0, 0, 0)',
+                'text_color': '#FFFFFF',
+                'plot_bgcolor': 'rgba(0, 0, 0, 0)',
+                'paper_bgcolor': 'rgba(0, 0, 0, 0)',
+                'grid_color': 'rgba(255, 255, 255, 0.1)',
+                'font_color': 'white',
+                'metric_label_color': 'white',
+                'metric_value_color': 'white',
+                'chart_colors': px.colors.sequential.Plasma,
+                'heatmap_colorscale': 'Plasma',
+                'table_header_color': 'rgba(49, 51, 63, 0.6)',
+                'table_cell_color': 'rgba(49, 51, 63, 0.2)',
+                'primary_color': '#3498db',
+                'secondary_color': '#2ecc71',
+                'accent_color': '#f39c12',
+                'divider_color': 'rgba(255, 255, 255, 0.1)'
+            }
+    except:
+        pass
+    
+    # Default to light theme
+    return {
+        'bg_color': 'rgba(255, 255, 255, 0)',
+        'text_color': '#31333F',
+        'plot_bgcolor': 'rgba(255, 255, 255, 0)',
+        'paper_bgcolor': 'rgba(255, 255, 255, 0)',
+        'grid_color': 'rgba(0, 0, 0, 0.1)',
+        'font_color': 'black',
+        'metric_label_color': '#31333F',
+        'metric_value_color': '#31333F',
+        'chart_colors': px.colors.sequential.Blues,
+        'heatmap_colorscale': 'Blues',
+        'table_header_color': 'rgba(221, 221, 221, 0.6)',
+        'table_cell_color': 'rgba(221, 221, 221, 0.2)',
+        'primary_color': '#3498db',
+        'secondary_color': '#2ecc71',
+        'accent_color': '#f39c12',
+        'divider_color': 'rgba(0, 0, 0, 0.1)'
+    }
+
+# Apply theme-aware styling
+def apply_professional_theme(theme_config):
+    """Apply a professional theme with custom CSS that adapts to light/dark mode"""
+    is_dark = theme_config['text_color'] == '#FFFFFF'
+    
+    background_color = 'rgb(14, 17, 23)' if is_dark else '#f8f9fa'
+    sidebar_background = 'rgb(32, 34, 37)' if is_dark else '#2c3e50'
+    text_color = theme_config['text_color']
+    primary_color = theme_config['primary_color']
+    secondary_color = theme_config['secondary_color']
+    accent_color = theme_config['accent_color']
+    
     st.markdown(
-        """
+        f"""
         <style>
             /* Main page styling */
-            .main {
-                background-color: #f8f9fa;
-            }
+            .main {{
+                background-color: {background_color};
+                color: {text_color};
+            }}
             
             /* Sidebar styling */
-            .sidebar .sidebar-content {
-                background-color: #2c3e50;
+            .sidebar .sidebar-content {{
+                background-color: {sidebar_background};
                 color: white;
-            }
+            }}
             
             /* Title styling */
-            h1 {
-                color: #2c3e50;
-                border-bottom: 2px solid #3498db;
-                padding-bottom: 10px;
-            }
+            h1, h2, h3, h4, h5, h6 {{
+                color: {text_color};
+            }}
             
-            /* Header styling */
-            h2, h3, h4 {
-                color: #2c3e50;
-            }
+            /* Text styling */
+            p, div, span, label {{
+                color: {text_color} !important;
+            }}
             
             /* Tab styling */
-            .stTabs [role="tablist"] {
-                background-color: #f1f3f6;
+            .stTabs [role="tablist"] {{
+                background-color: {'#1e1e1e' if is_dark else '#f1f3f6'};
                 padding: 8px 0;
                 border-radius: 8px;
-            }
+            }}
             
-            .stTabs [role="tab"][aria-selected="true"] {
-                background-color: #3498db;
+            .stTabs [role="tab"][aria-selected="true"] {{
+                background-color: {primary_color};
                 color: white;
                 border-radius: 8px;
                 font-weight: bold;
-            }
+            }}
             
             /* Button styling */
-            .stButton button {
-                background-color: #3498db;
+            .stButton button {{
+                background-color: {primary_color};
                 color: white;
                 border-radius: 4px;
                 border: none;
                 padding: 8px 16px;
                 font-weight: bold;
-            }
+            }}
             
-            .stButton button:hover {
-                background-color: #2980b9;
+            .stButton button:hover {{
+                background-color: {'#2980b9' if not is_dark else '#1a6ea0'};
                 color: white;
-            }
+            }}
             
             /* Dataframe styling */
-            .stDataFrame {
+            .stDataFrame {{
                 border-radius: 8px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }
+                background-color: {'rgb(25, 28, 36)' if is_dark else 'white'};
+            }}
+            
+            /* Table styling */
+            table {{
+                color: {text_color} !important;
+            }}
             
             /* Metric card styling */
-            div[data-testid="metric-container"] {
-                background: white;
+            div[data-testid="metric-container"] {{
+                background: {'rgb(25, 28, 36)' if is_dark else 'white'};
                 border-radius: 8px;
                 padding: 15px;
-                border: 1px solid #e1e4e8;
+                border: 1px solid {'rgb(45, 48, 56)' if is_dark else '#e1e4e8'};
                 box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            }
+            }}
             
             /* Selectbox styling */
-            .stSelectbox, .stMultiselect {
-                background-color: white;
+            .stSelectbox, .stMultiselect {{
+                background-color: {'rgb(25, 28, 36)' if is_dark else 'white'};
                 border-radius: 4px;
-            }
+                color: {text_color};
+            }}
             
             /* Slider styling */
-            .stSlider {
-                color: #3498db;
-            }
+            .stSlider {{
+                color: {primary_color};
+            }}
             
             /* Info/warning boxes */
-            .stAlert {
+            .stAlert {{
                 border-radius: 8px;
-            }
+                background-color: {'rgb(25, 28, 36)' if is_dark else 'white'};
+            }}
             
             /* Plotly chart containers */
-            .plotly-graph-div {
+            .plotly-graph-div {{
                 border-radius: 8px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                background: white;
-            }
+                background: {'rgb(25, 28, 36)' if is_dark else 'white'};
+            }}
+            
+            /* Input fields */
+            .stTextInput input, .stNumberInput input, .stTextArea textarea {{
+                background-color: {'rgb(25, 28, 36)' if is_dark else 'white'} !important;
+                color: {text_color} !important;
+            }}
+            
+            /* Divider color */
+            hr {{
+                border-color: {theme_config['divider_color']} !important;
+            }}
         </style>
         """,
         unsafe_allow_html=True
     )
 
-def apply_dark_theme():
-    """Detect Streamlit theme and return appropriate color settings"""
-    # Try to get the current theme from Streamlit config
-    try:
-        from streamlit import config
-        theme = config.get_option("theme.base")
-    except:
-        theme = "light"  # Default to light theme if detection fails
+def style_metric_cards(theme_config):
+    """Apply custom CSS to style metric cards with theme awareness."""
+    is_dark = theme_config['text_color'] == '#FFFFFF'
     
-    # Color settings for both themes
-    if theme == "dark":
-        return {
-            'bg_color': 'rgba(0, 0, 0, 0)',
-            'text_color': '#FFFFFF',
-            'plot_bgcolor': 'rgba(0, 0, 0, 0)',
-            'paper_bgcolor': 'rgba(0, 0, 0, 0)',
-            'grid_color': 'rgba(255, 255, 255, 0.1)',
-            'font_color': 'white',
-            'metric_label_color': 'white',
-            'metric_value_color': 'white',
-            'chart_colors': px.colors.sequential.Plasma,
-            'heatmap_colorscale': 'Plasma',
-            'table_header_color': 'rgba(49, 51, 63, 0.6)',
-            'table_cell_color': 'rgba(49, 51, 63, 0.2)'
-        }
-    else:  # light theme
-        return {
-            'bg_color': 'rgba(255, 255, 255, 0)',
-            'text_color': '#31333F',
-            'plot_bgcolor': 'rgba(255, 255, 255, 0)',
-            'paper_bgcolor': 'rgba(255, 255, 255, 0)',
-            'grid_color': 'rgba(0, 0, 0, 0.1)',
-            'font_color': 'black',
-            'metric_label_color': '#31333F',
-            'metric_value_color': '#31333F',
-            'chart_colors': px.colors.sequential.Blues,
-            'heatmap_colorscale': 'Blues',
-            'table_header_color': 'rgba(221, 221, 221, 0.6)',
-            'table_cell_color': 'rgba(221, 221, 221, 0.2)'
-        }
+    st.markdown(
+        f"""
+        <style>
+            /* Professional KPI Card Styling */
+            div[data-testid="metric-container"] {{
+                background: {'rgb(25, 28, 36)' if is_dark else 'white'};
+                border-radius: 8px;
+                padding: 15px;
+                border: 1px solid {'rgb(45, 48, 56)' if is_dark else '#e1e4e8'};
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                transition: all 0.3s ease;
+            }}
+            
+            div[data-testid="metric-container"]:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }}
+            
+            /* Center align the text inside KPI cards */
+            div[data-testid="metric-container"] > div {{
+                align-items: center;
+                justify-content: center;
+            }}
+            
+            /* Metric title styling */
+            div[data-testid="metric-container"] label {{
+                font-size: 14px;
+                font-weight: 600;
+                color: {'#95a5a6' if is_dark else '#7f8c8d'};
+            }}
+            
+            /* Metric value styling */
+            div[data-testid="metric-container"] div {{
+                font-size: 24px;
+                font-weight: 700;
+                color: {theme_config['text_color']};
+            }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
 @st.cache_data
 def load_data(uploaded_file=None):
@@ -235,51 +315,7 @@ def generate_kpis(df, col_types):
         })
     return kpis
 
-def style_metric_cards():
-    """Apply custom CSS to style metric cards with transparency."""
-    st.markdown(
-        """
-        <style>
-            /* Professional KPI Card Styling */
-            div[data-testid="metric-container"] {
-                background: white;
-                border-radius: 8px;
-                padding: 15px;
-                border: 1px solid #e1e4e8;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-                transition: all 0.3s ease;
-            }
-            
-            div[data-testid="metric-container"]:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            }
-            
-            /* Center align the text inside KPI cards */
-            div[data-testid="metric-container"] > div {
-                align-items: center;
-                justify-content: center;
-            }
-            
-            /* Metric title styling */
-            div[data-testid="metric-container"] label {
-                font-size: 14px;
-                font-weight: 600;
-                color: #7f8c8d;
-            }
-            
-            /* Metric value styling */
-            div[data-testid="metric-container"] div {
-                font-size: 24px;
-                font-weight: 700;
-                color: #2c3e50;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-def show_kpi_cards(kpis):
+def show_kpi_cards(kpis, theme_config):
     """Display dynamic KPI cards with improved layout"""
     st.subheader("📊 Key Metrics")
     cols = st.columns(len(kpis))
@@ -291,9 +327,9 @@ def show_kpi_cards(kpis):
                 delta=kpi['delta'],
                 help=kpi.get('help', '')
             )
-    style_metric_cards()
+    style_metric_cards(theme_config)
 
-def show_missing_values(df):
+def show_missing_values(df, theme_config):
     """Show missing values analysis with enhanced visuals"""
     st.subheader("🔍 Missing Values Analysis")
     
@@ -325,7 +361,7 @@ def show_missing_values(df):
         with col2:
             st.markdown("##### Missing Values Heatmap")
             fig = px.imshow(df.isna(),
-                           color_continuous_scale='gray',
+                           color_continuous_scale=theme_config['heatmap_colorscale'],
                            title="",
                            width=800,
                            height=400)
@@ -356,7 +392,7 @@ def show_missing_values(df):
                                           title="Missing Value Patterns")
             st.plotly_chart(pattern_fig, use_container_width=True)
 
-def show_correlations(df, col_types):
+def show_correlations(df, col_types, theme_config):
     """
     Enhanced correlation analysis with professional presentation
     """
@@ -491,7 +527,7 @@ def show_correlations(df, col_types):
         - For categorical variables, consider using other statistical tests like Chi-square
         """)
 
-def show_distributions(df, col_types):
+def show_distributions(df, col_types, theme_config):
     """Enhanced distribution analysis with professional presentation"""
     st.subheader("📊 Data Distributions")
     st.markdown("Explore the distribution of values in your dataset")
@@ -514,12 +550,15 @@ def show_distributions(df, col_types):
                 title=f"Distribution of {num_col}",
                 marginal="box",
                 nbins=50,
-                color_discrete_sequence=['#3498db']
+                color_discrete_sequence=[theme_config['primary_color']]
             )
             fig.update_layout(
                 showlegend=False,
                 xaxis_title=num_col,
-                yaxis_title="Count"
+                yaxis_title="Count",
+                plot_bgcolor=theme_config['plot_bgcolor'],
+                paper_bgcolor=theme_config['paper_bgcolor'],
+                font=dict(color=theme_config['font_color'])
             )
             st.plotly_chart(fig, use_container_width=True)
         
@@ -528,7 +567,12 @@ def show_distributions(df, col_types):
                 df, 
                 y=num_col, 
                 title=f"Box Plot of {num_col}",
-                color_discrete_sequence=['#3498db']
+                color_discrete_sequence=[theme_config['primary_color']]
+            )
+            fig.update_layout(
+                plot_bgcolor=theme_config['plot_bgcolor'],
+                paper_bgcolor=theme_config['paper_bgcolor'],
+                font=dict(color=theme_config['font_color'])
             )
             st.plotly_chart(fig, use_container_width=True)
             
@@ -603,6 +647,11 @@ def show_distributions(df, col_types):
                 color='Value',
                 color_discrete_sequence=px.colors.qualitative.Pastel
             )
+            fig.update_layout(
+                plot_bgcolor=theme_config['plot_bgcolor'],
+                paper_bgcolor=theme_config['paper_bgcolor'],
+                font=dict(color=theme_config['font_color'])
+            )
             st.plotly_chart(fig, use_container_width=True)
         
         with tab2:
@@ -617,9 +666,14 @@ def show_distributions(df, col_types):
                 textposition='inside',
                 textinfo='percent+label',
                 marker=dict(line=dict(color='#ffffff', width=1))
+            fig.update_layout(
+                plot_bgcolor=theme_config['plot_bgcolor'],
+                paper_bgcolor=theme_config['paper_bgcolor'],
+                font=dict(color=theme_config['font_color'])
+            )
             st.plotly_chart(fig, use_container_width=True)
 
-def show_time_series(df, col_types):
+def show_time_series(df, col_types, theme_config):
     """Enhanced time series analysis with professional presentation"""
     if not col_types['datetime']:
         st.warning("No datetime columns found for time series analysis")
@@ -680,13 +734,17 @@ def show_time_series(df, col_types):
         x=date_col, 
         y=value_col, 
         title=f"{value_col} over Time",
-        markers=True
+        markers=True,
+        color_discrete_sequence=[theme_config['primary_color']]
     )
     
     fig.update_layout(
         xaxis_title="Date",
         yaxis_title=value_col,
-        hovermode="x unified"
+        hovermode="x unified",
+        plot_bgcolor=theme_config['plot_bgcolor'],
+        paper_bgcolor=theme_config['paper_bgcolor'],
+        font=dict(color=theme_config['font_color'])
     )
     
     st.plotly_chart(fig, use_container_width=True)
@@ -717,7 +775,7 @@ def show_time_series(df, col_types):
                         x=decomposition.observed.index,
                         y=decomposition.observed,
                         name='Observed',
-                        line=dict(color='#3498db')
+                        line=dict(color=theme_config['primary_color'])
                     ), 
                     row=1, col=1
                 )
@@ -727,7 +785,7 @@ def show_time_series(df, col_types):
                         x=decomposition.trend.index,
                         y=decomposition.trend,
                         name='Trend',
-                        line=dict(color='#e74c3c')
+                        line=dict(color=theme_config['secondary_color'])
                     ), 
                     row=2, col=1
                 )
@@ -737,7 +795,7 @@ def show_time_series(df, col_types):
                         x=decomposition.seasonal.index,
                         y=decomposition.seasonal,
                         name='Seasonal',
-                        line=dict(color='#2ecc71')
+                        line=dict(color=theme_config['accent_color'])
                     ), 
                     row=3, col=1
                 )
@@ -755,7 +813,10 @@ def show_time_series(df, col_types):
                 fig.update_layout(
                     height=800,
                     showlegend=False,
-                    title_text="Time Series Decomposition"
+                    title_text="Time Series Decomposition",
+                    plot_bgcolor=theme_config['plot_bgcolor'],
+                    paper_bgcolor=theme_config['paper_bgcolor'],
+                    font=dict(color=theme_config['font_color'])
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
@@ -763,7 +824,7 @@ def show_time_series(df, col_types):
             except Exception as e:
                 st.error(f"Error in decomposition: {str(e)}")
 
-def create_filters(df, col_types):
+def create_filters(df, col_types, theme_config):
     """Create professional-looking dynamic filters in sidebar"""
     st.sidebar.header("🔍 Data Filters")
     
@@ -822,7 +883,7 @@ def create_filters(df, col_types):
     
     return df
 
-def show_data_preview(df):
+def show_data_preview(df, theme_config):
     """Enhanced data preview with professional presentation"""
     st.subheader("📋 Data Preview")
     st.markdown("Explore and interact with your dataset")
