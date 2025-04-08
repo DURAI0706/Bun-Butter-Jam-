@@ -2,7 +2,7 @@ import streamlit as st
 from login import show_login_page, logout
 from modules.navigation import main as navigation_main
 
-st.set_page_config(page_title="🧁 Coronation Bakery Sales Analytics", layout="wide")
+st.set_page_config(page_title="🎂 Coronation Bakery Sales Analytics", layout="wide")
 
 def main():
     # Ensure session state key exists
