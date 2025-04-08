@@ -691,7 +691,7 @@ def show_correlation_visualizations(df, col_types):
                                     y='Value',
                                     color='Metric',
                                     title="Normalized Metric Comparison",
-                                    line_shape="spline"
+                                    line_shape="linear"
                                 )
                             else:
                                 melt_df = norm_df.reset_index().melt(id_vars='index', var_name='Metric', value_name='Value')
