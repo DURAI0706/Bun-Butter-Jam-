@@ -39,24 +39,6 @@ def load_data(uploaded_file=None):
     except Exception as e:
         st.error(f"Error loading data: {e}")
         return None
-    
-def convert_to_datetime(df):
-    """Convert object columns to datetime with explicit format"""
-    for col in df.columns:
-        if df[col].dtype == 'object':
-            try:
-                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y%m%d', 
-                          '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %I:%M %p']:
-                    try:
-                        df[col] = pd.to_datetime(df[col], format=fmt)
-                        if pd.api.types.is_datetime64_any_dtype(df[col]):
-                            st.sidebar.success(f"Converted {col} to datetime using format: {fmt}")
-                            break
-                    except (ValueError, TypeError):
-                        continue
-            except Exception as e:
-                st.warning(f"Could not convert column '{col}' to datetime: {str(e)}")
-    return df
 
 def detect_column_types(df):
     """Detect column types and return categorized lists"""
@@ -809,7 +791,7 @@ def main():
         st.sidebar.info("📂 Using default: Coronation Bakery Dataset.csv")
 
     # Continue with EDA
-    df = convert_to_datetime(df)
+    df = load_data(df)
     col_types = detect_column_types(df)
     df = create_filters(df, col_types)
 
