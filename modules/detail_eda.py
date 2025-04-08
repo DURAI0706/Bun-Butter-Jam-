@@ -17,9 +17,9 @@ def load_data(uploaded_file=None):
         if uploaded_file is not None:
             # Handle user uploaded files
             if uploaded_file.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_file)
+                df = pd.read_csv(uploaded_file, parse_dates=True, infer_datetime_format=True)
             else:
-                df = pd.read_excel(uploaded_file)
+                df = pd.read_excel(uploaded_file, parse_dates=True)
         else:
             # Load default data file from specific path
             file_path = os.path.join('data', 'Coronation_Bakery_version_3.csv')
@@ -27,11 +27,17 @@ def load_data(uploaded_file=None):
                 st.error(f"Data file not found at: {file_path}")
                 st.info("Please ensure your CSV file is in the 'data' directory and named 'Coronation_Bakery_version_3.csv'")
                 return None
-            df = pd.read_csv(file_path)
+            df = pd.read_csv(file_path, parse_dates=True, infer_datetime_format=True)
         
         # Process date columns properly regardless of source
         if 'Date' in df.columns:
-            df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y', errors='coerce')
+            # Try multiple common date formats
+            for fmt in ['%d-%m-%Y', '%m/%d/%Y', '%Y-%m-%d', '%d-%b-%Y']:
+                try:
+                    df['Date'] = pd.to_datetime(df['Date'], format=fmt, errors='raise')
+                    break
+                except:
+                    continue
         
         # Store in session state
         st.session_state['sales_data'] = df
@@ -39,7 +45,7 @@ def load_data(uploaded_file=None):
     except Exception as e:
         st.error(f"Error loading data: {e}")
         return None
-
+        
 def prepare_df_for_explorer(df):
     """Prepare dataframe for explorer by explicitly formatting date columns"""
     df_copy = df.copy()
@@ -48,8 +54,14 @@ def prepare_df_for_explorer(df):
         try:
             # Check if column contains date-like strings
             sample = df_copy[col].dropna().iloc[0] if not df_copy[col].dropna().empty else ""
-            if isinstance(sample, str) and any(c in sample for c in ['/', '-', ':']):
-                df_copy[col] = pd.to_datetime(df_copy[col], errors='ignore')
+            if isinstance(sample, str):
+                # Try common date formats
+                for fmt in ['%d-%m-%Y', '%m/%d/%Y', '%Y-%m-%d', '%d-%b-%Y']:
+                    try:
+                        df_copy[col] = pd.to_datetime(df_copy[col], format=fmt, errors='raise')
+                        break  # If successful, move to next column
+                    except:
+                        continue
         except:
             pass
     return df_copy
