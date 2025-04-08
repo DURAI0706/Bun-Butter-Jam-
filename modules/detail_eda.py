@@ -1890,14 +1890,6 @@ def main():
     # Apply professional theme
     apply_professional_theme(theme_config)
     
-    # Set up the page configuration
-    st.set_page_config(
-        page_title="Professional EDA Dashboard",
-        page_icon="📊",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
-    
     # Display the header with logo and title
     col1, col2 = st.columns([1, 4])
     with col1:
