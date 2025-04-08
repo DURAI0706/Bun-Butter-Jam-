@@ -1407,7 +1407,7 @@ def show_correlation_visualizations(df, col_types):
                         textposition='inside',
                         textinfo='percent+label',
                         marker=dict(line=dict(color='#ffffff', width=1))
-                    
+                    )
                     st.plotly_chart(fig1, use_container_width=True)
                 
                 with comp_col2:
