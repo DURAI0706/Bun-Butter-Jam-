@@ -1829,7 +1829,7 @@ def show_correlation_visualizations(df, col_types):
 
 def main():
     # Apply professional theme and styling
-    apply_professional_theme()
+    apply_professional_theme(theme_config)
     
     # Set up the page configuration
     st.set_page_config(
