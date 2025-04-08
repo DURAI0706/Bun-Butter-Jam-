@@ -8,6 +8,7 @@ from streamlit_extras.dataframe_explorer import dataframe_explorer
 from sklearn.preprocessing import LabelEncoder
 from statsmodels.tsa.seasonal import seasonal_decompose
 from plotly.subplots import make_subplots
+import os
 
 @st.cache_data
 def load_data(uploaded_file=None):
