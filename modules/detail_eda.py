@@ -617,7 +617,8 @@ def show_distributions(df, col_types):
                 textposition='inside',
                 textinfo='percent+label',
                 marker=dict(line=dict(color='#ffffff', width=1))
-            st.plotly_chart(fig, use_container_width=True)
+            )
+
 
 def show_time_series(df, col_types):
     """Enhanced time series analysis with professional presentation"""
@@ -1345,7 +1346,7 @@ def show_correlation_visualizations(df, col_types):
                     fig1.update_traces(
                         textposition='inside',
                         textinfo='percent+label',
-                        marker=dict(line=dict(color='#ffffff', width=1))
+                        marker=dict(line=dict(color='#ffffff', width=1)))
                     
                     st.plotly_chart(fig1, use_container_width=True)
                 
