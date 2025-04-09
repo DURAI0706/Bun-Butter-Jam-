@@ -207,6 +207,23 @@ def filter_data(df):
         st.warning("No data available for the selected date range. Please adjust your filter.")
         return df
         
+    # Filter by seller if not "All Sellers"
+    if selected_seller != "All Sellers":
+        seller_filtered = filtered_df[filtered_df['Seller_Name'] == selected_seller]
+        if seller_filtered.empty:
+            st.warning(f"No data available for seller '{selected_seller}' in the selected date range.")
+            return filtered_df
+        filtered_df = seller_filtered
+        
+    # Filter by product if not "All Products"
+    if selected_product != "All Products":
+        product_filtered = filtered_df[filtered_df['Product_Type'] == selected_product]
+        if product_filtered.empty:
+            st.warning(f"No data available for product '{selected_product}' with the current filters.")
+            return filtered_df
+        filtered_df = product_filtered
+        
+    return filtered_df
 
 def display_metrics(df):
     filtered_df = filter_data(df)
@@ -214,6 +231,8 @@ def display_metrics(df):
     total_sales = filtered_df['Quantity'].sum()
     days_count = len(filtered_df['Date'].dt.date.unique())
     avg_sales = total_sales / days_count if days_count > 0 else 0
+    selected_seller = st.session_state['selected_seller']
+    selected_product = st.session_state['selected_product']
     st.markdown("""
     <style>
     div.stContainer {
@@ -243,7 +262,9 @@ def display_metrics(df):
     metrics = [
         {"title": "Total Revenue", "value": f"₹{total_revenue:,.2f}"},
         {"title": "Total Sales Count", "value": f"{total_sales:,}"},
-        {"title": "Average Sales/Day", "value": f"{avg_sales:,.1f}"}
+        {"title": "Average Sales/Day", "value": f"{avg_sales:,.1f}"},
+        {"title": "Selected Seller", "value": selected_seller},
+        {"title": "Selected Product", "value": selected_product}
     ]
     for i, col in enumerate(row):
         tile = col.container(height=120)
