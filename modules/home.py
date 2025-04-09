@@ -428,7 +428,6 @@ def load_module():
     
     # Display main filters, metrics and charts
     create_filters(filtered_df)
-    display_metrics(filtered_df)
     display_charts(filtered_df)
     
     st.sidebar.success(f"✅ {len(filtered_df)} rows × {len(filtered_df.columns)} columns")
