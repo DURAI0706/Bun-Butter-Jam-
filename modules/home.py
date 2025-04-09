@@ -193,84 +193,6 @@ def create_filters(df):
             on_change=on_product_change
         )
 
-def filter_data(df):
-    """Apply filters based on session state"""
-    start_date = st.session_state['start_date']
-    end_date = st.session_state['end_date']
-    selected_seller = st.session_state['selected_seller']
-    selected_product = st.session_state['selected_product']
-    
-    # Filter by date range
-    filtered_df = df[(df['Date'].dt.date >= start_date) & (df['Date'].dt.date <= end_date)]
-    
-    if filtered_df.empty:
-        st.warning("No data available for the selected date range. Please adjust your filter.")
-        return df
-        
-    # Filter by seller if not "All Sellers"
-    if selected_seller != "All Sellers":
-        seller_filtered = filtered_df[filtered_df['Seller_Name'] == selected_seller]
-        if seller_filtered.empty:
-            st.warning(f"No data available for seller '{selected_seller}' in the selected date range.")
-            return filtered_df
-        filtered_df = seller_filtered
-        
-    # Filter by product if not "All Products"
-    if selected_product != "All Products":
-        product_filtered = filtered_df[filtered_df['Product_Type'] == selected_product]
-        if product_filtered.empty:
-            st.warning(f"No data available for product '{selected_product}' with the current filters.")
-            return filtered_df
-        filtered_df = product_filtered
-        
-    return filtered_df
-
-def display_metrics(df):
-    filtered_df = filter_data(df)
-    total_revenue = filtered_df['Total_Amount'].sum()
-    total_sales = filtered_df['Quantity'].sum()
-    days_count = len(filtered_df['Date'].dt.date.unique())
-    avg_sales = total_sales / days_count if days_count > 0 else 0
-    selected_seller = st.session_state['selected_seller']
-    selected_product = st.session_state['selected_product']
-    st.markdown("""
-    <style>
-    div.stContainer {
-        border: 1px solid rgba(128, 128, 128, 0.3);
-        border-radius: 8px;
-        box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
-        background-color: #F0F2F6;
-        transition: box-shadow 0.3s ease;
-        padding: 10px;
-        text-align: center;
-    }
-    div.stContainer:hover {
-        box-shadow: 0 0 12px rgba(0, 123, 255, 0.5);
-    }
-    .metric-title {
-        font-size: 17px !important;
-        font-weight: 700 !important;
-        margin-bottom: 5px !important;
-    }
-    .metric-value {
-        font-size: 22px !important;
-        font-weight: 800 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    row = st.columns(5)
-    metrics = [
-        {"title": "Total Revenue", "value": f"₹{total_revenue:,.2f}"},
-        {"title": "Total Sales Count", "value": f"{total_sales:,}"},
-        {"title": "Average Sales/Day", "value": f"{avg_sales:,.1f}"},
-        {"title": "Selected Seller", "value": selected_seller},
-        {"title": "Selected Product", "value": selected_product}
-    ]
-    for i, col in enumerate(row):
-        tile = col.container(height=120)
-        tile.markdown(f"<p class='metric-title'>{metrics[i]['title']}</p>", unsafe_allow_html=True)
-        tile.markdown(f"<p class='metric-value'>{metrics[i]['value']}</p>", unsafe_allow_html=True)
-
 def display_charts(df):
     filtered_df = filter_data(df)
     
@@ -474,7 +396,6 @@ def load_module():
     
     # Display main filters, metrics and charts
     create_filters(filtered_df)
-    display_metrics(filtered_df)
     display_charts(filtered_df)
     
     st.sidebar.success(f"✅ {len(filtered_df)} rows × {len(filtered_df.columns)} columns")
