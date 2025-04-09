@@ -438,10 +438,8 @@ def display_charts(df):
                 st.info("No data available for the selected filters.")
 
 def load_module():
-    st.set_page_config(
-        page_title="Coronation Bakery Dashboard",
-        page_icon="🍰",
-        layout="wide"
+    st.title(
+        page_title="🍰 Coronation Bakery Dashboard",
     )
     
     # Sidebar for file upload
