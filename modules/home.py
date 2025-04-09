@@ -231,6 +231,8 @@ def display_metrics(df):
     total_sales = filtered_df['Quantity'].sum()
     days_count = len(filtered_df['Date'].dt.date.unique())
     avg_sales = total_sales / days_count if days_count > 0 else 0
+    selected_seller = st.session_state['selected_seller']
+    selected_product = st.session_state['selected_product']
     st.markdown("""
     <style>
     div.stContainer {
@@ -261,6 +263,8 @@ def display_metrics(df):
         {"title": "Total Revenue", "value": f"₹{total_revenue:,.2f}"},
         {"title": "Total Sales Count", "value": f"{total_sales:,}"},
         {"title": "Average Sales/Day", "value": f"{avg_sales:,.1f}"},
+        {"title": "Selected Seller", "value": selected_seller},
+        {"title": "Selected Product", "value": selected_product}
     ]
     for i, col in enumerate(row):
         tile = col.container(height=120)
