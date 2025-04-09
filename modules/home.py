@@ -97,98 +97,132 @@ def create_dynamic_filters(df, col_types):
     return filtered_df
 
 def create_filters(df):
-    """Create filters in main dashboard area"""
+    """Create filters in main dashboard area with improved state management"""
+    # Initialize session state if needed
     if 'start_date' not in st.session_state:
-        st.session_state['start_date'] = df['Date'].min()
+        st.session_state['start_date'] = df['Date'].min().date()
     if 'end_date' not in st.session_state:
-        st.session_state['end_date'] = df['Date'].max()
+        st.session_state['end_date'] = df['Date'].max().date()
     if 'selected_seller' not in st.session_state:
         st.session_state['selected_seller'] = "All Sellers"
     if 'selected_product' not in st.session_state:
         st.session_state['selected_product'] = "All Products"
-
+    if 'seller_options' not in st.session_state:
+        st.session_state['seller_options'] = ["All Sellers"] + sorted(df['Seller_Name'].unique().tolist())
+    
+    # Define callback functions for filter changes
+    def on_seller_change():
+        selected_seller = st.session_state.seller_select
+        if selected_seller != st.session_state['selected_seller']:
+            st.session_state['selected_seller'] = selected_seller
+            st.session_state['selected_product'] = "All Products"
+            # Update product options based on seller selection
+            if selected_seller == "All Sellers":
+                product_df = df
+            else:
+                product_df = df[df['Seller_Name'] == selected_seller]
+            st.session_state['product_options'] = ["All Products"] + sorted(product_df['Product_Type'].unique().tolist())
+    
+    def on_product_change():
+        st.session_state['selected_product'] = st.session_state.product_select
+    
+    def on_start_date_change():
+        st.session_state['start_date'] = st.session_state.start_date_input
+        
+    def on_end_date_change():
+        st.session_state['end_date'] = st.session_state.end_date_input
+        
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        start_date = st.date_input(
+        st.date_input(
             "Start Date",
             value=st.session_state['start_date'],
             min_value=df['Date'].min().to_pydatetime(),
             max_value=df['Date'].max().to_pydatetime(),
-            format="DD-MM-YYYY"
+            format="DD-MM-YYYY",
+            key="start_date_input",
+            on_change=on_start_date_change
         )
-        st.session_state['start_date'] = start_date
 
     with col2:
-        end_date = st.date_input(
+        st.date_input(
             "End Date",
             value=st.session_state['end_date'],
             min_value=df['Date'].min().to_pydatetime(),
             max_value=df['Date'].max().to_pydatetime(),
-            format="DD-MM-YYYY"
+            format="DD-MM-YYYY",
+            key="end_date_input",
+            on_change=on_end_date_change
         )
-        st.session_state['end_date'] = end_date
 
-        if end_date < start_date:
+        if st.session_state['end_date'] < st.session_state['start_date']:
             st.error("End date must be after start date. Resetting to default range.")
-            st.session_state['start_date'] = df['Date'].min()
-            st.session_state['end_date'] = df['Date'].max()
+            st.session_state['start_date'] = df['Date'].min().date()
+            st.session_state['end_date'] = df['Date'].max().date()
 
     with col3:
-        sellers = sorted(df['Seller_Name'].unique().tolist())
-        seller_options = ["All Sellers"] + sellers
-
-        selected_seller = st.selectbox(
+        # Update product options if needed when changing sellers
+        if selected_seller := st.selectbox(
             "Select Seller",
-            options=seller_options,
-            index=seller_options.index(st.session_state['selected_seller']) if st.session_state['selected_seller'] in seller_options else 0,
-            key="seller_select"
-        )
-
-        # Check for change and reset product selection if needed
-        if selected_seller != st.session_state['selected_seller']:
-            st.session_state['selected_product'] = "All Products"
-        st.session_state['selected_seller'] = selected_seller
+            options=st.session_state['seller_options'],
+            index=st.session_state['seller_options'].index(st.session_state['selected_seller']),
+            key="seller_select",
+            on_change=on_seller_change
+        ):
+            pass  # The on_change callback will handle the state updates
 
     with col4:
-        if selected_seller == "All Sellers":
-            product_df = df
-        else:
-            product_df = df[df['Seller_Name'] == selected_seller]
-
-        product_options = ["All Products"] + sorted(product_df['Product_Type'].unique().tolist())
-        if st.session_state['selected_product'] not in product_options:
+        # Make sure product options are initialized based on current seller
+        if 'product_options' not in st.session_state:
+            if st.session_state['selected_seller'] == "All Sellers":
+                product_df = df
+            else:
+                product_df = df[df['Seller_Name'] == st.session_state['selected_seller']]
+            st.session_state['product_options'] = ["All Products"] + sorted(product_df['Product_Type'].unique().tolist())
+        
+        # Verify the selected product is in the options
+        if st.session_state['selected_product'] not in st.session_state['product_options']:
             st.session_state['selected_product'] = "All Products"
-
-        selected_product = st.selectbox(
+            
+        st.selectbox(
             "Select Product Type",
-            options=product_options,
-            index=product_options.index(st.session_state['selected_product']) if st.session_state['selected_product'] in product_options else 0,
-            key="product_select"
+            options=st.session_state['product_options'],
+            index=st.session_state['product_options'].index(st.session_state['selected_product']),
+            key="product_select",
+            on_change=on_product_change
         )
-        st.session_state['selected_product'] = selected_product
 
 def filter_data(df):
+    """Apply filters based on session state"""
     start_date = st.session_state['start_date']
     end_date = st.session_state['end_date']
     selected_seller = st.session_state['selected_seller']
     selected_product = st.session_state['selected_product']
+    
+    # Filter by date range
     filtered_df = df[(df['Date'].dt.date >= start_date) & (df['Date'].dt.date <= end_date)]
+    
     if filtered_df.empty:
         st.warning("No data available for the selected date range. Please adjust your filter.")
         return df
+        
+    # Filter by seller if not "All Sellers"
     if selected_seller != "All Sellers":
         seller_filtered = filtered_df[filtered_df['Seller_Name'] == selected_seller]
         if seller_filtered.empty:
             st.warning(f"No data available for seller '{selected_seller}' in the selected date range.")
             return filtered_df
         filtered_df = seller_filtered
+        
+    # Filter by product if not "All Products"
     if selected_product != "All Products":
         product_filtered = filtered_df[filtered_df['Product_Type'] == selected_product]
         if product_filtered.empty:
             st.warning(f"No data available for product '{selected_product}' with the current filters.")
             return filtered_df
         filtered_df = product_filtered
+        
     return filtered_df
 
 def display_metrics(df):
@@ -439,7 +473,7 @@ def main():
     # Display main dashboard
     st.markdown(f"<h1 style='text-align: center;'>{dataset_name} Sales Dashboard</h1>", unsafe_allow_html=True)
     
-    # Session state for main filters
+    # Initialize sellers and products list if not already in session state
     if 'sales_data' not in st.session_state:
         st.session_state['sales_data'] = filtered_df
     
