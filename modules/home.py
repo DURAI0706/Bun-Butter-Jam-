@@ -121,7 +121,7 @@ def create_filters(df):
                 product_df = df
             else:
                 product_df = df[df['Seller_Name'] == selected_seller]
-            st.session_state['product_options'] = ["All Products"] + sorted(product_df['Product_Type'].unique().tolist()
+            st.session_state['product_options'] = ["All Products"] + sorted(product_df['Product_Type'].unique().tolist())
     
     def on_product_change():
         st.session_state['selected_product'] = st.session_state.product_select
