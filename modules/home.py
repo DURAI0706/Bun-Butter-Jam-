@@ -121,7 +121,7 @@ def create_filters(df):
                 product_df = df
             else:
                 product_df = df[df['Seller_Name'] == selected_seller]
-            st.session_state['product_options'] = ["All Products"] + sorted(product_df['Product_Type'].unique().tolist())
+            st.session_state['product_options'] = ["All Products"] + sorted(product_df['Product_Type'].unique().tolist()
     
     def on_product_change():
         st.session_state['selected_product'] = st.session_state.product_select
@@ -163,14 +163,13 @@ def create_filters(df):
 
     with col3:
         # Update product options if needed when changing sellers
-        if selected_seller := st.selectbox(
+        st.selectbox(
             "Select Seller",
             options=st.session_state['seller_options'],
             index=st.session_state['seller_options'].index(st.session_state['selected_seller']),
             key="seller_select",
             on_change=on_seller_change
-        ):
-            pass  # The on_change callback will handle the state updates
+        )
 
     with col4:
         # Make sure product options are initialized based on current seller
@@ -192,7 +191,6 @@ def create_filters(df):
             key="product_select",
             on_change=on_product_change
         )
-
 def filter_data(df):
     """Apply filters based on session state"""
     start_date = st.session_state['start_date']
@@ -231,8 +229,7 @@ def display_metrics(df):
     total_sales = filtered_df['Quantity'].sum()
     days_count = len(filtered_df['Date'].dt.date.unique())
     avg_sales = total_sales / days_count if days_count > 0 else 0
-    selected_seller = st.session_state['selected_seller']
-    selected_product = st.session_state['selected_product']
+    
     st.markdown("""
     <style>
     div.stContainer {
@@ -258,13 +255,13 @@ def display_metrics(df):
     }
     </style>
     """, unsafe_allow_html=True)
-    row = st.columns(5)
+    
+    row = st.columns(3)  # Changed from 5 to 3 since we're removing two metrics
     metrics = [
         {"title": "Total Revenue", "value": f"₹{total_revenue:,.2f}"},
         {"title": "Total Sales Count", "value": f"{total_sales:,}"},
         {"title": "Average Sales/Day", "value": f"{avg_sales:,.1f}"},
-        {"title": "Selected Seller", "value": selected_seller},
-        {"title": "Selected Product", "value": selected_product}
+        # Removed "Selected Seller" and "Selected Product" metrics
     ]
     for i, col in enumerate(row):
         tile = col.container(height=120)
