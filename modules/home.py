@@ -437,7 +437,7 @@ def display_charts(df):
             else:
                 st.info("No data available for the selected filters.")
 
-def main():
+def load_module():
     st.set_page_config(
         page_title="Coronation Bakery Dashboard",
         page_icon="🍰",
