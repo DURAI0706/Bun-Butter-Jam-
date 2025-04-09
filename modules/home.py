@@ -185,44 +185,48 @@ def display_charts(df):
     with row1[1]:
         st.markdown("<h3 style='text-align: center;'>Sales Contribution by Seller</h3>", unsafe_allow_html=True)
         chart_container2 = st.container(height=300)
+        
         with chart_container2:
-            # Reset seller filter temporarily to show all sellers
+            # Filter based on date range
             temp_df = df[(df['Date'].dt.date >= st.session_state['start_date']) & 
-                        (df['Date'].dt.date <= st.session_state['end_date'])]
-            
-            # Group by seller and sum quantities
-            seller_sales = temp_df.groupby('Seller_Name')['Quantity'].sum().reset_index()
-
-            if not seller_sales.empty:
-                fig = px.pie(
-                    seller_sales,
-                    values='Quantity',
-                    names='Seller_Name',
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                
+                         (df['Date'].dt.date <= st.session_state['end_date'])]
+        
+            if not temp_df.empty:
+                if 'Product_Type' in temp_df.columns:
+                    # Group by Seller and Product_Type
+                    seller_sales = temp_df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
+                    
+                    # Create path for hierarchical sunburst
+                    seller_sales['path'] = seller_sales.apply(lambda row: f"{row['Seller_Name']}/{row['Product_Type']}", axis=1)
+        
+                    fig = px.sunburst(
+                        seller_sales,
+                        path=['Seller_Name', 'Product_Type'],
+                        values='Quantity',
+                        color='Seller_Name',
+                        color_discrete_sequence=px.colors.qualitative.Set3
+                    )
+                else:
+                    # If Product_Type not present, just show Seller breakdown
+                    seller_sales = temp_df.groupby('Seller_Name')['Quantity'].sum().reset_index()
+        
+                    fig = px.sunburst(
+                        seller_sales,
+                        path=['Seller_Name'],
+                        values='Quantity',
+                        color='Seller_Name',
+                        color_discrete_sequence=px.colors.qualitative.Set3
+                    )
+        
                 fig.update_layout(
                     height=250,
-                    margin=dict(l=20, r=20, t=20, b=20),
-                    legend=dict(
-                        orientation="v",
-                        yanchor="middle",
-                        y=0.5,
-                        xanchor="right",
-                        x=1.0,
-                        font=dict(size=16)
-                    )
+                    margin=dict(l=20, r=20, t=20, b=20)
                 )
-                
-                fig.update_traces(
-                    textposition='inside',
-                    textinfo='percent',
-                    textfont_size=14
-                )
-                
+        
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No seller data available for the selected date range.")
+
     
     # Second row of charts
     row2 = st.columns(2)
