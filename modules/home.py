@@ -438,10 +438,7 @@ def display_charts(df):
                 st.info("No data available for the selected filters.")
 
 def load_module():
-    st.title(
-        page_title="🍰 Coronation Bakery Dashboard",
-    )
-    
+   
     # Sidebar for file upload
     uploaded_file = st.sidebar.file_uploader(
         "Upload CSV or Excel file (optional, defaults to Coronation Bakery Dataset)",
