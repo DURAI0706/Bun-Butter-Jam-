@@ -51,51 +51,6 @@ def load_data(uploaded_file=None):
         st.error(f"Error loading data: {e}")
         return None
 
-def create_dynamic_filters(df, col_types):
-    """Create dynamic filters in sidebar"""
-    st.sidebar.header("Filters")
-    filtered_df = df.copy()
-    
-    date_col = df.select_dtypes(include=['datetime64']).columns.tolist()
-    if date_col:
-        selected_date_col = st.sidebar.selectbox("Select date column for filtering", date_col)
-        min_date = df[selected_date_col].min()
-        max_date = df[selected_date_col].max()
-        
-        date_range = st.sidebar.date_input(
-            f"Select date range for {selected_date_col}",
-            value=(min_date, max_date),
-            min_value=min_date,
-            max_value=max_date
-        )
-        
-        if len(date_range) == 2:
-            start_date = pd.to_datetime(date_range[0])
-            end_date = pd.to_datetime(date_range[1])
-            filtered_df = filtered_df[(filtered_df[selected_date_col] >= start_date) & 
-                    (filtered_df[selected_date_col] <= end_date)]
-            
-    for col in col_types['numeric'][:3]:
-        min_val = float(df[col].min())
-        max_val = float(df[col].max())
-        values = st.sidebar.slider(
-            f"Filter {col}",
-            min_val, max_val, (min_val, max_val)
-        )
-        filtered_df = filtered_df[(filtered_df[col] >= values[0]) & (filtered_df[col] <= values[1])]
-    
-    for col in col_types['categorical'][:3]:
-        options = df[col].unique().tolist()
-        selected = st.sidebar.multiselect(
-            f"Filter {col}",
-            options,
-            default=options
-        )
-        if selected:
-            filtered_df = filtered_df[filtered_df[col].isin(selected)]
-    
-    return filtered_df
-
 def create_filters(df):
     """Create filters in main dashboard area with improved state management"""
     # Initialize session state if needed
@@ -199,35 +154,35 @@ def filter_data(df):
     selected_product = st.session_state['selected_product']
     
     # Filter by date range
-    filtered_df = df[(df['Date'].dt.date >= start_date) & (df['Date'].dt.date <= end_date)]
+    df = df[(df['Date'].dt.date >= start_date) & (df['Date'].dt.date <= end_date)]
     
-    if filtered_df.empty:
+    if df.empty:
         st.warning("No data available for the selected date range. Please adjust your filter.")
         return df
         
     # Filter by seller if not "All Sellers"
     if selected_seller != "All Sellers":
-        seller_filtered = filtered_df[filtered_df['Seller_Name'] == selected_seller]
+        seller_filtered = df[df['Seller_Name'] == selected_seller]
         if seller_filtered.empty:
             st.warning(f"No data available for seller '{selected_seller}' in the selected date range.")
-            return filtered_df
-        filtered_df = seller_filtered
+            return df
+        df = seller_filtered
         
     # Filter by product if not "All Products"
     if selected_product != "All Products":
-        product_filtered = filtered_df[filtered_df['Product_Type'] == selected_product]
+        product_filtered = df[df['Product_Type'] == selected_product]
         if product_filtered.empty:
             st.warning(f"No data available for product '{selected_product}' with the current filters.")
-            return filtered_df
-        filtered_df = product_filtered
+            return df
+        df = product_filtered
         
-    return filtered_df
+    return df
 
 def display_metrics(df):
-    filtered_df = filter_data(df)
-    total_revenue = filtered_df['Total_Amount'].sum()
-    total_sales = filtered_df['Quantity'].sum()
-    days_count = len(filtered_df['Date'].dt.date.unique())
+    df = filter_data(df)
+    total_revenue = df['Total_Amount'].sum()
+    total_sales = df['Quantity'].sum()
+    days_count = len(df['Date'].dt.date.unique())
     avg_sales = total_sales / days_count if days_count > 0 else 0
     
     st.markdown("""
@@ -269,7 +224,7 @@ def display_metrics(df):
         tile.markdown(f"<p class='metric-value'>{metrics[i]['value']}</p>", unsafe_allow_html=True)
 
 def display_charts(df):
-    filtered_df = filter_data(df)
+    df = filter_data(df)
     
     # First row of charts
     row1 = st.columns(2)
@@ -280,7 +235,7 @@ def display_charts(df):
         chart_container1 = st.container(height=300)
         with chart_container1:
             # Group by product and sum quantities
-            product_sales = filtered_df.groupby('Product_Type')['Quantity'].sum().reset_index()
+            product_sales = df.groupby('Product_Type')['Quantity'].sum().reset_index()
             # Sort by quantity in descending order and take top 5
             top_products = product_sales.sort_values('Quantity', ascending=False).head(5)
             
@@ -370,7 +325,7 @@ def display_charts(df):
         st.markdown("<h3 style='text-align: center;'>Daily Sales Trend</h3>", unsafe_allow_html=True)
         chart_container3 = st.container(height=300)
         with chart_container3:
-            daily_sales = filtered_df.groupby(filtered_df['Date'].dt.date)['Quantity'].sum().reset_index()
+            daily_sales = df.groupby(df['Date'].dt.date)['Quantity'].sum().reset_index()
     
             if not daily_sales.empty and len(daily_sales) > 1:
                 fig = px.line(
@@ -401,7 +356,7 @@ def display_charts(df):
         
         with chart_container4:
             # Group by seller and product, then count
-            seller_product_counts = filtered_df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
+            seller_product_counts = df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
         
             if not seller_product_counts.empty:
                 # Create stacked vertical column chart
@@ -455,22 +410,20 @@ def load_module():
     else:
         dataset_name = "Coronation Bakery Dataset"
         st.sidebar.info("📂 Using default: Coronation Bakery Dataset.csv")
-
-    # Detect column types
     
     # Display main dashboard
     st.markdown(f"<h1 style='text-align: center;'>{dataset_name} Sales Dashboard</h1>", unsafe_allow_html=True)
     
     # Initialize sellers and products list if not already in session state
     if 'sales_data' not in st.session_state:
-        st.session_state['sales_data'] = filtered_df
+        st.session_state['sales_data'] = df
     
     # Display main filters, metrics and charts
-    create_filters(filtered_df)
-    display_metrics(filtered_df)
-    display_charts(filtered_df)
+    create_filters(df)
+    display_metrics(df)
+    display_charts(df)
     
-    st.sidebar.success(f"✅ {len(filtered_df)} rows × {len(filtered_df.columns)} columns")
+    st.sidebar.success(f"✅ {len(df)} rows × {len(df.columns)} columns")
 
 if __name__ == "__main__":
     main()
