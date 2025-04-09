@@ -132,6 +132,67 @@ def create_filters(df):
     def on_end_date_change():
         st.session_state['end_date'] = st.session_state.end_date_input
         
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.date_input(
+            "Start Date",
+            value=st.session_state['start_date'],
+            min_value=df['Date'].min().to_pydatetime(),
+            max_value=df['Date'].max().to_pydatetime(),
+            format="DD-MM-YYYY",
+            key="start_date_input",
+            on_change=on_start_date_change
+        )
+
+    with col2:
+        st.date_input(
+            "End Date",
+            value=st.session_state['end_date'],
+            min_value=df['Date'].min().to_pydatetime(),
+            max_value=df['Date'].max().to_pydatetime(),
+            format="DD-MM-YYYY",
+            key="end_date_input",
+            on_change=on_end_date_change
+        )
+
+        if st.session_state['end_date'] < st.session_state['start_date']:
+            st.error("End date must be after start date. Resetting to default range.")
+            st.session_state['start_date'] = df['Date'].min().date()
+            st.session_state['end_date'] = df['Date'].max().date()
+
+    with col3:
+        # Update product options if needed when changing sellers
+        if selected_seller := st.selectbox(
+            "Select Seller",
+            options=st.session_state['seller_options'],
+            index=st.session_state['seller_options'].index(st.session_state['selected_seller']),
+            key="seller_select",
+            on_change=on_seller_change
+        ):
+            pass  # The on_change callback will handle the state updates
+
+    with col4:
+        # Make sure product options are initialized based on current seller
+        if 'product_options' not in st.session_state:
+            if st.session_state['selected_seller'] == "All Sellers":
+                product_df = df
+            else:
+                product_df = df[df['Seller_Name'] == st.session_state['selected_seller']]
+            st.session_state['product_options'] = ["All Products"] + sorted(product_df['Product_Type'].unique().tolist())
+        
+        # Verify the selected product is in the options
+        if st.session_state['selected_product'] not in st.session_state['product_options']:
+            st.session_state['selected_product'] = "All Products"
+            
+        st.selectbox(
+            "Select Product Type",
+            options=st.session_state['product_options'],
+            index=st.session_state['product_options'].index(st.session_state['selected_product']),
+            key="product_select",
+            on_change=on_product_change
+        )
+
 def filter_data(df):
     """Apply filters based on session state"""
     start_date = st.session_state['start_date']
@@ -163,52 +224,6 @@ def filter_data(df):
         filtered_df = product_filtered
         
     return filtered_df
-
-def display_metrics(df):
-    filtered_df = filter_data(df)
-    total_revenue = filtered_df['Total_Amount'].sum()
-    total_sales = filtered_df['Quantity'].sum()
-    days_count = len(filtered_df['Date'].dt.date.unique())
-    avg_sales = total_sales / days_count if days_count > 0 else 0
-    selected_seller = st.session_state['selected_seller']
-    selected_product = st.session_state['selected_product']
-    st.markdown("""
-    <style>
-    div.stContainer {
-        border: 1px solid rgba(128, 128, 128, 0.3);
-        border-radius: 8px;
-        box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
-        background-color: #F0F2F6;
-        transition: box-shadow 0.3s ease;
-        padding: 10px;
-        text-align: center;
-    }
-    div.stContainer:hover {
-        box-shadow: 0 0 12px rgba(0, 123, 255, 0.5);
-    }
-    .metric-title {
-        font-size: 17px !important;
-        font-weight: 700 !important;
-        margin-bottom: 5px !important;
-    }
-    .metric-value {
-        font-size: 22px !important;
-        font-weight: 800 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    row = st.columns(5)
-    metrics = [
-        {"title": "Total Revenue", "value": f"₹{total_revenue:,.2f}"},
-        {"title": "Total Sales Count", "value": f"{total_sales:,}"},
-        {"title": "Average Sales/Day", "value": f"{avg_sales:,.1f}"},
-        {"title": "Selected Seller", "value": selected_seller},
-        {"title": "Selected Product", "value": selected_product}
-    ]
-    for i, col in enumerate(row):
-        tile = col.container(height=120)
-        tile.markdown(f"<p class='metric-title'>{metrics[i]['title']}</p>", unsafe_allow_html=True)
-        tile.markdown(f"<p class='metric-value'>{metrics[i]['value']}</p>", unsafe_allow_html=True)
 
 def display_charts(df):
     filtered_df = filter_data(df)
