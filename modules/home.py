@@ -457,10 +457,6 @@ def load_module():
         st.sidebar.info("📂 Using default: Coronation Bakery Dataset.csv")
 
     # Detect column types
-    col_types = detect_column_types(df)
-    
-    # Apply dynamic filters from sidebar
-    filtered_df = create_dynamic_filters(df, col_types)
     
     # Display main dashboard
     st.markdown(f"<h1 style='text-align: center;'>{dataset_name} Sales Dashboard</h1>", unsafe_allow_html=True)
