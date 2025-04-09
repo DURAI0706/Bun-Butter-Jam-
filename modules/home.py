@@ -258,39 +258,39 @@ def display_charts(df):
     with row2[1]:
         st.markdown("<h3 style='text-align: center;'>Product Count by Seller</h3>", unsafe_allow_html=True)
         chart_container4 = st.container(height=300)
+        
         with chart_container4:
             # Group by seller and product, then count
             seller_product_counts = filtered_df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
             
             if not seller_product_counts.empty:
-                # Create stacked horizontal bar chart
+                # Create stacked vertical column chart
                 fig = px.bar(
                     seller_product_counts,
-                    x='Quantity',
-                    y='Seller_Name',
+                    x='Seller_Name',
+                    y='Quantity',
                     color='Product_Type',
-                    orientation='h',
                     color_discrete_sequence=px.colors.qualitative.Bold
                 )
                 
                 fig.update_layout(
                     height=250,
                     margin=dict(l=20, r=20, t=20, b=20),
-                    xaxis_title="Product Count",
-                    yaxis_title="Seller",
+                    xaxis_title="Seller",
+                    yaxis_title="Product Count",
                     legend_title="Product Type",
                     barmode='stack',
-                    yaxis=dict(
-                        autorange="reversed",  # To match the example image
+                    xaxis=dict(
                         categoryorder='total descending'
                     ),
                     font=dict(color="white"),
-                    xaxis=dict(
+                    yaxis=dict(
                         showgrid=True,
                         gridcolor='rgba(255, 255, 255, 0.2)'
                     )
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
+
             else:
                 st.info("No data available for the selected filters.")
