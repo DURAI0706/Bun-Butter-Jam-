@@ -237,7 +237,7 @@ def display_charts(df):
         chart_container3 = st.container(height=300)
         with chart_container3:
             daily_sales = filtered_df.groupby(filtered_df['Date'].dt.date)['Quantity'].sum().reset_index()
-            
+    
             if not daily_sales.empty and len(daily_sales) > 1:
                 fig = px.line(
                     daily_sales, 
@@ -245,7 +245,7 @@ def display_charts(df):
                     y='Quantity',
                     markers=True
                 )
-                
+    
                 fig.update_layout(
                     height=250,
                     margin=dict(l=20, r=20, t=20, b=20),
@@ -258,43 +258,41 @@ def display_charts(df):
             else:
                 st.info("Not enough daily data available for trend chart.")
     
-    # Container 4: Revenue by Product Type
-    with row2[1]:
-        st.markdown("<h3 style='text-align: center;'>Product Count by Seller</h3>", unsafe_allow_html=True)
-        chart_container4 = st.container(height=300)
-        
-        with chart_container4:
-            # Group by seller and product, then count
-            seller_product_counts = filtered_df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
-            
-            if not seller_product_counts.empty:
-                # Create stacked vertical column chart
-                fig = px.bar(
-                    seller_product_counts,
-                    x='Seller_Name',
-                    y='Quantity',
-                    color='Product_Type',
-                    color_discrete_sequence=px.colors.qualitative.Bold
+    # Row 3 – Full Width: Product Count by Seller
+    st.markdown("<h3 style='text-align: center;'>Product Count by Seller</h3>", unsafe_allow_html=True)
+    chart_container4 = st.container(height=500)  # Increased height here
+    
+    with chart_container4:
+        # Group by seller and product, then count
+        seller_product_counts = filtered_df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
+    
+        if not seller_product_counts.empty:
+            # Create stacked vertical column chart
+            fig = px.bar(
+                seller_product_counts,
+                x='Seller_Name',
+                y='Quantity',
+                color='Product_Type',
+                color_discrete_sequence=px.colors.qualitative.Bold
+            )
+    
+            fig.update_layout(
+                height=450,  # Bigger chart
+                margin=dict(l=40, r=40, t=40, b=40),
+                xaxis_title="Seller",
+                yaxis_title="Product Count",
+                legend_title="Product Type",
+                barmode='stack',
+                xaxis=dict(
+                    categoryorder='total descending'
+                ),
+                font=dict(color="white", size=14),
+                yaxis=dict(
+                    showgrid=True,
+                    gridcolor='rgba(255, 255, 255, 0.2)'
                 )
-                
-                fig.update_layout(
-                    height=250,
-                    margin=dict(l=20, r=20, t=20, b=20),
-                    xaxis_title="Seller",
-                    yaxis_title="Product Count",
-                    legend_title="Product Type",
-                    barmode='stack',
-                    xaxis=dict(
-                        categoryorder='total descending'
-                    ),
-                    font=dict(color="white"),
-                    yaxis=dict(
-                        showgrid=True,
-                        gridcolor='rgba(255, 255, 255, 0.2)'
-                    )
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
-
-            else:
-                st.info("No data available for the selected filters.")
+            )
+    
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No data available for the selected filters.")
