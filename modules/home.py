@@ -38,68 +38,32 @@ def create_filters(df):
         st.session_state['selected_seller'] = "All Sellers"
     if 'selected_product' not in st.session_state:
         st.session_state['selected_product'] = "All Products"
-
     col1, col2, col3, col4 = st.columns(4)
-
     with col1:
-        start_date = st.date_input(
-            "Start Date",
-            value=st.session_state['start_date'],
-            min_value=df['Date'].min().to_pydatetime(),
-            max_value=df['Date'].max().to_pydatetime(),
-            format="DD-MM-YYYY"
-        )
+        start_date = st.date_input("Start Date", value=st.session_state['start_date'], min_value=df['Date'].min().to_pydatetime(), max_value=df['Date'].max().to_pydatetime(), format="DD-MM-YYYY")
         st.session_state['start_date'] = start_date
-
     with col2:
-        end_date = st.date_input(
-            "End Date",
-            value=st.session_state['end_date'],
-            min_value=df['Date'].min().to_pydatetime(),
-            max_value=df['Date'].max().to_pydatetime(),
-            format="DD-MM-YYYY"
-        )
+        end_date = st.date_input("End Date", value=st.session_state['end_date'], min_value=df['Date'].min().to_pydatetime(), max_value=df['Date'].max().to_pydatetime(), format="DD-MM-YYYY")
         st.session_state['end_date'] = end_date
-
         if end_date < start_date:
             st.error("End date must be after start date. Resetting to default range.")
             st.session_state['start_date'] = df['Date'].min()
             st.session_state['end_date'] = df['Date'].max()
-
     with col3:
         sellers = sorted(df['Seller_Name'].unique().tolist())
         seller_options = ["All Sellers"] + sellers
-
-        selected_seller = st.selectbox(
-            "Select Seller",
-            options=seller_options,
-            index=seller_options.index(st.session_state['selected_seller']) if st.session_state['selected_seller'] in seller_options else 0,
-            key="seller_select"
-        )
-
-        # Check for change and reset product selection if needed
-        if selected_seller != st.session_state['selected_seller']:
-            st.session_state['selected_product'] = "All Products"
+        selected_seller = st.selectbox("Select Seller", options=seller_options, index=seller_options.index(st.session_state['selected_seller']))
         st.session_state['selected_seller'] = selected_seller
-
     with col4:
         if selected_seller == "All Sellers":
             product_df = df
         else:
             product_df = df[df['Seller_Name'] == selected_seller]
-
         product_options = ["All Products"] + sorted(product_df['Product_Type'].unique().tolist())
         if st.session_state['selected_product'] not in product_options:
             st.session_state['selected_product'] = "All Products"
-
-        selected_product = st.selectbox(
-            "Select Product Type",
-            options=product_options,
-            index=product_options.index(st.session_state['selected_product']) if st.session_state['selected_product'] in product_options else 0,
-            key="product_select"
-        )
+        selected_product = st.selectbox("Select Product Type", options=product_options, index=product_options.index(st.session_state['selected_product']))
         st.session_state['selected_product'] = selected_product
-
 
 def filter_data(df):
     start_date = st.session_state['start_date']
@@ -221,51 +185,47 @@ def display_charts(df):
     with row1[1]:
         st.markdown("<h3 style='text-align: center;'>Sales Contribution by Seller</h3>", unsafe_allow_html=True)
         chart_container2 = st.container(height=300)
-        
         with chart_container2:
-            # Filter based on date range
+            # Reset seller filter temporarily to show all sellers
             temp_df = df[(df['Date'].dt.date >= st.session_state['start_date']) & 
-                         (df['Date'].dt.date <= st.session_state['end_date'])]
-        
-            if not temp_df.empty:
-                if 'Product_Type' in temp_df.columns:
-                    # Group by Seller and Product_Type
-                    seller_sales = temp_df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
-                    
-                    # Create path for hierarchical sunburst
-                    seller_sales['path'] = seller_sales.apply(lambda row: f"{row['Seller_Name']}/{row['Product_Type']}", axis=1)
-        
-                    fig = px.sunburst(
-                        seller_sales,
-                        path=['Seller_Name', 'Product_Type'],
-                        values='Quantity',
-                        color='Seller_Name',
-                        color_discrete_sequence=px.colors.qualitative.Set3
-                    )
-                else:
-                    # If Product_Type not present, just show Seller breakdown
-                    seller_sales = temp_df.groupby('Seller_Name')['Quantity'].sum().reset_index()
-        
-                    fig = px.sunburst(
-                        seller_sales,
-                        path=['Seller_Name'],
-                        values='Quantity',
-                        color='Seller_Name',
-                        color_discrete_sequence=px.colors.qualitative.Set3
-                    )
-        
+                        (df['Date'].dt.date <= st.session_state['end_date'])]
+            
+            # Group by seller and sum quantities
+            seller_sales = temp_df.groupby('Seller_Name')['Quantity'].sum().reset_index()
+
+            if not seller_sales.empty:
+                fig = px.pie(
+                    seller_sales,
+                    values='Quantity',
+                    names='Seller_Name',
+                    color_discrete_sequence=px.colors.qualitative.Set3
+                )
+                
                 fig.update_layout(
                     height=250,
-                    margin=dict(l=20, r=20, t=20, b=20)
+                    margin=dict(l=20, r=20, t=20, b=20),
+                    legend=dict(
+                        orientation="v",
+                        yanchor="middle",
+                        y=0.5,
+                        xanchor="right",
+                        x=1.0,
+                        font=dict(size=16)
+                    )
                 )
-        
+                
+                fig.update_traces(
+                    textposition='inside',
+                    textinfo='percent',
+                    textfont_size=14
+                )
+                
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No seller data available for the selected date range.")
-
     
     # Second row of charts
-    row2 = st.columns(1)
+    row2 = st.columns(2)
     
     # Container 3: Daily Sales Trend
     with row2[0]:
@@ -273,7 +233,7 @@ def display_charts(df):
         chart_container3 = st.container(height=300)
         with chart_container3:
             daily_sales = filtered_df.groupby(filtered_df['Date'].dt.date)['Quantity'].sum().reset_index()
-    
+            
             if not daily_sales.empty and len(daily_sales) > 1:
                 fig = px.line(
                     daily_sales, 
@@ -281,7 +241,7 @@ def display_charts(df):
                     y='Quantity',
                     markers=True
                 )
-    
+                
                 fig.update_layout(
                     height=250,
                     margin=dict(l=20, r=20, t=20, b=20),
@@ -294,17 +254,15 @@ def display_charts(df):
             else:
                 st.info("Not enough daily data available for trend chart.")
     
-    row3 = st.columns(1)
-    
-    # Container 3: Daily Sales Trend
-    with row3[0]:
+    # Container 4: Revenue by Product Type
+    with row2[1]:
         st.markdown("<h3 style='text-align: center;'>Product Count by Seller</h3>", unsafe_allow_html=True)
-        chart_container4 = st.container(height=500)  # Increased height here
+        chart_container4 = st.container(height=300)
         
         with chart_container4:
             # Group by seller and product, then count
             seller_product_counts = filtered_df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
-        
+            
             if not seller_product_counts.empty:
                 # Create stacked vertical column chart
                 fig = px.bar(
@@ -314,10 +272,10 @@ def display_charts(df):
                     color='Product_Type',
                     color_discrete_sequence=px.colors.qualitative.Bold
                 )
-        
+                
                 fig.update_layout(
-                    height=450,  # Bigger chart
-                    margin=dict(l=40, r=40, t=40, b=40),
+                    height=250,
+                    margin=dict(l=20, r=20, t=20, b=20),
                     xaxis_title="Seller",
                     yaxis_title="Product Count",
                     legend_title="Product Type",
@@ -325,13 +283,14 @@ def display_charts(df):
                     xaxis=dict(
                         categoryorder='total descending'
                     ),
-                    font=dict(color="white", size=14),
+                    font=dict(color="white"),
                     yaxis=dict(
                         showgrid=True,
                         gridcolor='rgba(255, 255, 255, 0.2)'
                     )
                 )
-        
+                
                 st.plotly_chart(fig, use_container_width=True)
+
             else:
                 st.info("No data available for the selected filters.")
