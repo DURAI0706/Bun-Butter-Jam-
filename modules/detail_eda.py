@@ -494,19 +494,7 @@ def show_correlation_visualizations(df, col_types):
     amount_cols = [col for col in df.columns if 'amount' in col.lower() or 'total' in col.lower()]
     quantity_cols = [col for col in df.columns if 'quantity' in col.lower() or 'qty' in col.lower()]
     sales_metric = amount_cols[0] if amount_cols else (quantity_cols[0] if quantity_cols else None)
-    
-    # Top-level metrics
-    if sales_metric:
-        metrics_container = st.container()
-        with metrics_container:
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Total Sales", f"{df[sales_metric].sum():,.2f}")
-            with col2:
-                st.metric("Average Sale", f"{df[sales_metric].mean():,.2f}")
-            with col3:
-                st.metric("Transactions", f"{len(df):,}")
-    
+       
     # Main dashboard layout
     tab_names = ["Performance", "Trends", "Distributions", "Relationships", "Advanced"]
     main_tabs = st.tabs(tab_names)
