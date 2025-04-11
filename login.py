@@ -150,15 +150,33 @@ def show_login_page():
     """Render login page and handle callback"""
     st.markdown("""
     <style>
+    /* Page background gradient recreation */
+    [data-testid="stAppViewContainer"] {
+        background: radial-gradient(circle at 30% 40%, #a30c72 0%, #1a0076 35%, #010047 70%, #000e8f 100%);
+        background-size: cover;
+        background-attachment: fixed;
+        color: white;
+    }
+
+    /* Centered login container */
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        height: 85vh;
+    }
+
+    /* Glass button style */
     .glass-button {
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 10px;
-        background: rgba(255, 255, 255, 0.1);
+        padding: 16px 32px;
+        background: rgba(255, 255, 255, 0.08);
         border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 16px;
-        padding: 20px 40px;
+        border-radius: 20px;
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         color: white;
@@ -166,20 +184,12 @@ def show_login_page():
         font-weight: 600;
         text-decoration: none;
         transition: all 0.3s ease-in-out;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
     }
+
     .glass-button:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
-    .login-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 70vh;
-        flex-direction: column;
-    }
-    body {
-        background: linear-gradient(to right, #1e0266, #1b1bc2, #db067f);
-        color: white;
+        background: rgba(255, 255, 255, 0.15);
+        transform: scale(1.03);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -191,7 +201,6 @@ def show_login_page():
 
     query_params = st.query_params
 
-    # 1. If user just authenticated via callback code
     if "code" in query_params:
         with st.spinner("Authenticating..."):
             user_info = process_callback(query_params["code"])
@@ -200,16 +209,13 @@ def show_login_page():
                 st.query_params.update({"auth": "true"})
                 return True
 
-    # 2. Already logged in via session
     if st.session_state.get("authenticated", False):
         return True
 
-    # 3. Rehydration via query param
     if query_params.get("auth") == "true":
         st.session_state["authenticated"] = True
         return True
 
-    # 4. Not logged in yet
     auth_url = get_google_auth_url()
     if auth_url:
         st.markdown(f"""
