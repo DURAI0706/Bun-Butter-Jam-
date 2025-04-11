@@ -107,49 +107,23 @@ def generate_kpis(df, col_types):
     return kpis
 
 def style_metric_cards():
-    """Apply custom CSS to style metric cards with transparency."""
-    st.markdown(
-        """
-        <style>
-            /* Transparent KPI Card Background */
-            div[data-testid="metric-container"] {
-                background: rgba(255, 255, 255, 0.1); /* Light transparency */
-                border-radius: 10px;
-                padding: 10px;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
-            }
-            /* Center align the text inside KPI cards */
-            div[data-testid="metric-container"] > div {
-                align-items: center;
-                justify-content: center;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
-def style_metric_cards():
     st.markdown("""
         <style>
         div[data-testid="metric-container"] {
-            border: 1px solid #d3d3d3;
-            border-radius: 10px;
+            background-color: #f0f2f6;
+            border-radius: 12px;
             padding: 20px;
-            margin: 10px;
-            background-color: #ffffff;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s ease-in-out;
-        }
-        div[data-testid="metric-container"]:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            margin: 5px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         div[data-testid="metric-container"] > label {
             font-size: 14px;
-            color: #333;
+            color: #555;
         }
         </style>
     """, unsafe_allow_html=True)
+
 
 def show_kpi_cards(kpis, columns_per_row=3):
     """Display dynamic KPI cards in a matrix layout"""
