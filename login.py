@@ -213,7 +213,7 @@ def show_login_page():
         <div class="centered-login">
             <h2>🔐 Login to Coronation Bakery Dashboard</h2><br>
             <a href="{auth_url}" class="glass-button">
-                <img src="https://developers.google.com/identity/images/g-logo.png" width="20">
+                <img src="https://t3.ftcdn.net/jpg/05/18/09/32/360_F_518093233_bYlgthr8ZLyAUQ3WryFSSSn3ruFJLZHM.jpg" width="20">
                 LOGIN
                 <span style="font-size: 18px;">🔒</span>
             </a>
