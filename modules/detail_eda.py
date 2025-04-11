@@ -625,18 +625,40 @@ def show_correlation_visualizations(df, col_types):
             st.subheader("🍰 Composition Analysis")
             
             # First composition row - Pie chart
+            # First composition row - Interactive Pie chart
             comp_row1 = st.container()
-            
+    
             with comp_row1:
-                comp_col = st.selectbox("Select category", cat_cols, key="comp_col_select")
+                comp_col = cat_cols[0]  # Seller_Name
                 comp_data = df.groupby(comp_col)[sales_metric].sum().reset_index()
-                fig1 = px.pie(comp_data, values=sales_metric, names=comp_col,
-                            title=f"{sales_metric} by {comp_col}")
+                
+                # Create pie chart with more interactive features
+                fig1 = px.pie(comp_data, 
+                            values=sales_metric, 
+                            names=comp_col,
+                            title=f"{sales_metric} by {comp_col}",
+                            hover_data=[sales_metric],  # Show sales metric value on hover
+                            custom_data=[comp_col])     # Include column name for custom data
+                
+                # Update layout and traces for better interactivity
+                fig1.update_traces(
+                    textposition='inside',
+                    textinfo='percent+label',
+                    hovertemplate='<b>%{label}</b><br>%{customdata}: %{value:.2f}<br>Percentage: %{percent:.1%}<extra></extra>'
+                )
+                
+                # Add interactivity options
+                fig1.update_layout(
+                    uniformtext_minsize=12,
+                    uniformtext_mode='hide',
+                    clickmode='event+select',
+                )
+                
                 st.plotly_chart(fig1, use_container_width=True, key="composition_pie_chart")
-            
+    
             # Second composition row - Treemap
             comp_row2 = st.container()
-            
+    
             with comp_row2:
                 if len(cat_cols) > 1:
                     fig2 = px.treemap(df, path=cat_cols[:2], values=sales_metric,
