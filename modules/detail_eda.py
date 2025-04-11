@@ -260,24 +260,26 @@ def show_correlations(df, col_types):
     with st.expander("🔍 How to interpret correlations"):
         st.markdown(f"""
         **Interpretation Guide ({corr_method.title()} Correlation)**:
-        
-        - **+1 to +0.7**: Very strong positive relationship
-        - **+0.7 to +0.3**: Positive relationship
-        - **-0.3 to +0.3**: Little to no relationship
-        - **-0.3 to -0.7**: Negative relationship
-        - **-0.7 to -1**: Very strong negative relationship
-        
+    
+        - <span style='color:red;'>**+1 to +0.7**</span>: 🔴 Very strong positive relationship  
+        - <span style='color:orange;'>**+0.7 to +0.3**</span>: 🟠 Positive relationship  
+        - <span style='color:blue;'>**-0.3 to +0.3**</span>: 🔵 Little to no relationship  
+        - <span style='color:orange;'>**-0.3 to -0.7**</span>: 🟠 Negative relationship  
+        - <span style='color:red;'>**-0.7 to -1**</span>: 🔴 Very strong negative relationship
+    
         **Method Notes**:
-        - **Pearson**: Measures linear relationships (for continuous variables)
-        - **Spearman**: Measures monotonic relationships (for ordinal/ranked data)
-        - **Kendall**: Similar to Spearman but more robust for small samples
-        
+        - **Pearson**: Measures linear relationships (for continuous variables)  
+        - **Spearman**: Measures monotonic relationships (for ordinal/ranked data)  
+        - **Kendall**: Similar to Spearman but more robust for small samples  
+    
         **Note for categorical variables**:
-        - Correlations with label-encoded categorical variables should be interpreted with caution
-        - The strength depends on how categories are distributed
-        - Consider using other statistical tests for categorical-categorical relationships
-        """)
+        - Correlations with label-encoded categorical variables should be interpreted with caution  
+        - The strength depends on how categories are distributed  
+        - Consider using other statistical tests for categorical-categorical relationships  
+        """, unsafe_allow_html=True)
+        
         st.warning("Note: Correlation ≠ Causation. High correlation may indicate a relationship but doesn't prove one causes the other.")
+
 
 def show_distributions(df, col_types):
     """Show distributions for different column types"""
