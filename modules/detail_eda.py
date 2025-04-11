@@ -109,7 +109,7 @@ def generate_kpis(df, col_types):
 def style_metric_cards():
     st.markdown("""
         <style>
-        div.stContainer {
+        div.metric-container {
             border: 1px solid rgba(128, 128, 128, 0.3);
             border-radius: 8px;
             box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
@@ -117,8 +117,9 @@ def style_metric_cards():
             transition: box-shadow 0.3s ease;
             padding: 10px;
             text-align: center;
+            margin-bottom: 10px;
         }
-        div.stContainer:hover {
+        div.metric-container:hover {
             box-shadow: 0 0 12px rgba(0, 123, 255, 0.5);
         }
         .metric-title {
@@ -133,20 +134,26 @@ def style_metric_cards():
         </style>
         """, unsafe_allow_html=True)
 
-
 def show_kpi_cards(kpis, columns_per_row=3):
-    """Display dynamic KPI cards in a matrix layout with container support"""
+    """Display dynamic KPI cards in a matrix layout with individual containers"""
+    style_metric_cards()
+    
     for i in range(0, len(kpis), columns_per_row):
         row_kpis = kpis[i:i + columns_per_row]
-        with st.container():  # Wrap each row of KPI cards in a container
-            cols = st.columns(len(row_kpis))
-            for j, kpi in enumerate(row_kpis):
-                cols[j].metric(
-                    label=kpi['title'],
-                    value=kpi['value'],
-                    delta=kpi['delta']
-                )
-    style_metric_cards()
+        cols = st.columns(len(row_kpis))
+        
+        for j, kpi in enumerate(row_kpis):
+            with cols[j]:
+                # Create a container for each metric
+                with st.container():
+                    # Add custom HTML with a container div surrounding each metric
+                    st.markdown(f"""
+                    <div class="metric-container">
+                        <p class="metric-title">{kpi['title']}</p>
+                        <p class="metric-value">{kpi['value']}</p>
+                        {f'<p class="metric-delta">{kpi["delta"]}</p>' if kpi['delta'] else ''}
+                    </div>
+                    """, unsafe_allow_html=True)
 
 
 def show_missing_values(df):
