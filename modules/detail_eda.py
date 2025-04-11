@@ -135,17 +135,19 @@ def style_metric_cards():
 
 
 def show_kpi_cards(kpis, columns_per_row=3):
-    """Display dynamic KPI cards in a matrix layout"""
+    """Display dynamic KPI cards in a matrix layout with container support"""
     for i in range(0, len(kpis), columns_per_row):
         row_kpis = kpis[i:i + columns_per_row]
-        cols = st.columns(len(row_kpis))
-        for j, kpi in enumerate(row_kpis):
-            cols[j].metric(
-                label=kpi['title'],
-                value=kpi['value'],
-                delta=kpi['delta']
-            )
+        with st.container():  # Wrap each row of KPI cards in a container
+            cols = st.columns(len(row_kpis))
+            for j, kpi in enumerate(row_kpis):
+                cols[j].metric(
+                    label=kpi['title'],
+                    value=kpi['value'],
+                    delta=kpi['delta']
+                )
     style_metric_cards()
+
 
 def show_missing_values(df):
     """Show missing values analysis"""
