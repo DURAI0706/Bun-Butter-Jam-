@@ -517,19 +517,25 @@ def show_correlation_visualizations(df, col_types):
                 
                 for i, col in enumerate(cat_cols[:3]):
                     with perf_tabs[i]:
-                        # Create container for the entire tab content
-                        with st.container():
+                        # Create a container for the entire tab content
+                        tab_container = st.container()
+                        
+                        with tab_container:
                             col1, col2 = st.columns([3, 1])
+                            
                             with col1:
-                                # Container for the chart
-                                with st.container():
+                                # Create a container specifically for the chart
+                                chart_container = st.container()
+                                with chart_container:
                                     top_items = df.groupby(col)[sales_metric].sum().nlargest(5).reset_index()
                                     fig = px.bar(top_items, x=col, y=sales_metric, 
                                                 color=col, title=f"Top {col} by {sales_metric}")
-                                    st.plotly_chart(fig, use_container_width=True, key=f"top_performers_chart_{i}")
+                                    st.plotly_chart(fig, use_container_width=True)
+                            
                             with col2:
-                                # Container for the metrics
-                                with st.container():
+                                # Create a container specifically for the metrics
+                                metrics_container = st.container()
+                                with metrics_container:
                                     # Apply metric card style to key insight
                                     st.markdown("""
                                     <div class="metric-container">
@@ -560,13 +566,16 @@ def show_correlation_visualizations(df, col_types):
         if date_col and sales_metric:
             st.subheader("📈 Temporal Trends")
             
-            # Create container for the entire trend analysis
-            with st.container():
+            # Create a main container for the entire trend analysis
+            trend_container = st.container()
+            
+            with trend_container:
                 trend_col1, trend_col2 = st.columns([1, 3])
                 
                 with trend_col1:
                     # Container for controls and metrics
-                    with st.container():
+                    controls_container = st.container()
+                    with controls_container:
                         # Controls for trend analysis
                         metric_options = []
                         if sales_metric: metric_options.append(sales_metric)
@@ -624,13 +633,14 @@ def show_correlation_visualizations(df, col_types):
                             <p>{:.1f}% change</p>
                         </div>
                         """.format(growth, growth*100), unsafe_allow_html=True)
-                        
+                
                 with trend_col2:
-                    # Container for the chart
-                    with st.container():
+                    # Container specifically for the chart
+                    chart_container = st.container()
+                    with chart_container:
                         fig = px.line(trend_data, x=x_col, y=selected_metric, 
                                      title=f"{time_groups} Trend of {selected_metric}")
-                        st.plotly_chart(fig, use_container_width=True, key="trend_line_chart")
+                        st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("Date column or sales metric not found for trend analysis")
     
@@ -642,69 +652,81 @@ def show_correlation_visualizations(df, col_types):
         cat_cols = col_types['categorical'] if 'categorical' in col_types else df.select_dtypes(include=['object', 'category']).columns.tolist()
         
         if num_cols:
-            # First row - Distribution controls and statistics
-            with st.container():
-                dist_col = st.selectbox("Select metric", num_cols)
-                if cat_cols:
-                    group_col = st.selectbox("Group by", ['None'] + cat_cols)
-                
-                st.markdown("### Statistics")
-                stats = df[dist_col].describe()
-                st.dataframe(pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#c76b7a'))
-                
-                # Apply metric card style to key statistics
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.markdown("""
-                    <div class="metric-container">
-                        <p class="metric-title">Mean</p>
-                        <p class="metric-value">{:,.2f}</p>
-                    </div>
-                    """.format(stats['mean']), unsafe_allow_html=True)
-                with col2:
-                    st.markdown("""
-                    <div class="metric-container">
-                        <p class="metric-title">Median</p>
-                        <p class="metric-value">{:,.2f}</p>
-                    </div>
-                    """.format(stats['50%']), unsafe_allow_html=True)
-                with col3:
-                    st.markdown("""
-                    <div class="metric-container">
-                        <p class="metric-title">Standard Deviation</p>
-                        <p class="metric-value">{:,.2f}</p>
-                    </div>
-                    """.format(stats['std']), unsafe_allow_html=True)
+            # Create a container for the entire distribution analysis
+            dist_container = st.container()
             
-            # Second row - Distribution chart
-            with st.container():
-                if cat_cols and group_col != 'None':
-                    fig = px.box(df, x=group_col, y=dist_col, color=group_col,
-                                title=f"Distribution of {dist_col} by {group_col}")
-                else:
-                    fig = px.histogram(df, x=dist_col, 
-                                    title=f"Distribution of {dist_col}")
-                st.plotly_chart(fig, use_container_width=True, key="distribution_chart")
+            with dist_container:
+                # First row - Distribution controls and statistics
+                controls_container = st.container()
+                with controls_container:
+                    dist_col = st.selectbox("Select metric", num_cols)
+                    if cat_cols:
+                        group_col = st.selectbox("Group by", ['None'] + cat_cols)
+                    
+                    st.markdown("### Statistics")
+                    stats = df[dist_col].describe()
+                    st.dataframe(pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#c76b7a'))
+                    
+                    # Apply metric card style to key statistics
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.markdown("""
+                        <div class="metric-container">
+                            <p class="metric-title">Mean</p>
+                            <p class="metric-value">{:,.2f}</p>
+                        </div>
+                        """.format(stats['mean']), unsafe_allow_html=True)
+                    with col2:
+                        st.markdown("""
+                        <div class="metric-container">
+                            <p class="metric-title">Median</p>
+                            <p class="metric-value">{:,.2f}</p>
+                        </div>
+                        """.format(stats['50%']), unsafe_allow_html=True)
+                    with col3:
+                        st.markdown("""
+                        <div class="metric-container">
+                            <p class="metric-title">Standard Deviation</p>
+                            <p class="metric-value">{:,.2f}</p>
+                        </div>
+                        """.format(stats['std']), unsafe_allow_html=True)
+                
+                # Second row - Distribution chart
+                chart_container = st.container()
+                with chart_container:
+                    if cat_cols and group_col != 'None':
+                        fig = px.box(df, x=group_col, y=dist_col, color=group_col,
+                                    title=f"Distribution of {dist_col} by {group_col}")
+                    else:
+                        fig = px.histogram(df, x=dist_col, 
+                                        title=f"Distribution of {dist_col}")
+                    st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("No numeric columns found for distribution analysis")
             
         if cat_cols and sales_metric:
             st.subheader("🍰 Composition Analysis")
             
-            # First composition row - Pie chart
-            with st.container():
-                comp_col = cat_cols[0]
-                comp_data = df.groupby(comp_col)[sales_metric].sum().reset_index()
-                fig1 = px.pie(comp_data, values=sales_metric, names=comp_col,
-                            title=f"{sales_metric} by {comp_col}")
-                st.plotly_chart(fig1, use_container_width=True, key="composition_pie_chart")
+            # Create a container for composition analysis
+            comp_container = st.container()
             
-            # Second composition row - Treemap
-            with st.container():
-                if len(cat_cols) > 1:
-                    fig2 = px.treemap(df, path=cat_cols[:2], values=sales_metric,
-                                    title=f"Hierarchical View of {sales_metric}")
-                    st.plotly_chart(fig2, use_container_width=True, key="composition_treemap_chart")
+            with comp_container:
+                # First composition row - Pie chart
+                pie_container = st.container()
+                with pie_container:
+                    comp_col = cat_cols[0]
+                    comp_data = df.groupby(comp_col)[sales_metric].sum().reset_index()
+                    fig1 = px.pie(comp_data, values=sales_metric, names=comp_col,
+                                title=f"{sales_metric} by {comp_col}")
+                    st.plotly_chart(fig1, use_container_width=True)
+                
+                # Second composition row - Treemap
+                treemap_container = st.container()
+                with treemap_container:
+                    if len(cat_cols) > 1:
+                        fig2 = px.treemap(df, path=cat_cols[:2], values=sales_metric,
+                                        title=f"Hierarchical View of {sales_metric}")
+                        st.plotly_chart(fig2, use_container_width=True)
 
     
     # Tab 4: Relationships
@@ -712,13 +734,16 @@ def show_correlation_visualizations(df, col_types):
         if len(num_cols) >= 2:
             st.subheader("🔗 Correlation Analysis")
             
-            # Container for the entire relationship analysis
-            with st.container():
+            # Create a container for the entire relationship analysis
+            rel_container = st.container()
+            
+            with rel_container:
                 rel_col1, rel_col2 = st.columns([1, 3])
                 
                 with rel_col1:
                     # Container for controls and metrics
-                    with st.container():
+                    controls_container = st.container()
+                    with controls_container:
                         x_col = st.selectbox("X-axis", num_cols)
                         y_col = st.selectbox("Y-axis", [col for col in num_cols if col != x_col])
                         
@@ -749,16 +774,17 @@ def show_correlation_visualizations(df, col_types):
                             """.format(strength, direction), unsafe_allow_html=True)
                 
                 with rel_col2:
-                    # Container for the chart
-                    with st.container():
+                    # Container specifically for the chart
+                    chart_container = st.container()
+                    with chart_container:
                         if cat_cols and color_col:
                             fig = px.scatter(df, x=x_col, y=y_col, color=color_col,
                                            title=f"{x_col} vs {y_col} by {color_col}")
                         else:
                             fig = px.scatter(df, x=x_col, y=y_col,
                                            title=f"{x_col} vs {y_col}")
-                            
-                        st.plotly_chart(fig, use_container_width=True, key="correlation_scatter_chart")
+                        
+                        st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("Need at least 2 numeric columns for relationship analysis")
     
@@ -781,18 +807,24 @@ def show_correlation_visualizations(df, col_types):
             # Correlation Matrix
             if "Correlation Matrix" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    # Container for correlation matrix
-                    with st.container():
+                    # Create a container for correlation matrix
+                    corr_container = st.container()
+                    
+                    with corr_container:
                         selected_num_cols = st.multiselect("Select metrics for correlation", num_cols, num_cols[:5])
                         if len(selected_num_cols) >= 2:
                             corr_matrix = df[selected_num_cols].corr()
-                            fig = px.imshow(corr_matrix,
-                                          text_auto=True,
-                                          aspect="auto",
-                                          color_continuous_scale='RdBu',
-                                          title="Correlation Matrix")
-                            fig.update_layout(height=600)
-                            st.plotly_chart(fig, use_container_width=True, key="correlation_matrix_chart")
+                            
+                            # Container for the chart
+                            chart_container = st.container()
+                            with chart_container:
+                                fig = px.imshow(corr_matrix,
+                                              text_auto=True,
+                                              aspect="auto",
+                                              color_continuous_scale='RdBu',
+                                              title="Correlation Matrix")
+                                fig.update_layout(height=600)
+                                st.plotly_chart(fig, use_container_width=True)
                             
                             # Add styled metric for strongest correlation
                             if len(selected_num_cols) >= 2:
@@ -814,8 +846,10 @@ def show_correlation_visualizations(df, col_types):
             # Normalized Metrics
             if "Normalized Metrics" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    # Container for normalized metrics
-                    with st.container():
+                    # Create a container for normalized metrics
+                    norm_container = st.container()
+                    
+                    with norm_container:
                         selected_metrics = st.multiselect("Select metrics to compare", num_cols, num_cols[:3])
                         if len(selected_metrics) >= 1:
                             norm_df = df[selected_metrics].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
@@ -846,7 +880,10 @@ def show_correlation_visualizations(df, col_types):
                                         title="Normalized Metric Comparison"
                                     )
 
-                                st.plotly_chart(fig, use_container_width=True, key="normalized_metrics_chart")
+                                # Container for the chart
+                                chart_container = st.container()
+                                with chart_container:
+                                    st.plotly_chart(fig, use_container_width=True)
                                 
                                 # Add styled metrics for min/max rates of change
                                 if len(selected_metrics) >= 1 and date_col:
@@ -887,23 +924,29 @@ def show_correlation_visualizations(df, col_types):
             # Time Decomposition
             if "Time Decomposition" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    # Container for time decomposition
-                    with st.container():
+                    # Create a container for time decomposition
+                    decomp_container = st.container()
+                    
+                    with decomp_container:
                         ts_col = st.selectbox("Select metric to decompose", num_cols, key="ts_col_select") 
                         try:
                             ts_df = df.set_index(date_col)[ts_col].resample('D').sum().ffill()
                             decomposition = seasonal_decompose(ts_df, model='additive', period=7)
-                            fig = make_subplots(rows=4, cols=1, shared_xaxes=True)
-                            fig.add_trace(go.Scatter(x=ts_df.index, y=ts_df, name='Observed'), 
-                                        row=1, col=1)
-                            fig.add_trace(go.Scatter(x=decomposition.trend.index, y=decomposition.trend, name='Trend'), 
-                                        row=2, col=1)
-                            fig.add_trace(go.Scatter(x=decomposition.seasonal.index, y=decomposition.seasonal, name='Seasonal'), 
-                                        row=3, col=1)
-                            fig.add_trace(go.Scatter(x=decomposition.resid.index, y=decomposition.resid, name='Residual'), 
-                                        row=4, col=1)
-                            fig.update_layout(height=600, title_text="Time Series Decomposition")
-                            st.plotly_chart(fig, use_container_width=True, key="time_decomposition_chart")
+                            
+                            # Container for the chart
+                            chart_container = st.container()
+                            with chart_container:
+                                fig = make_subplots(rows=4, cols=1, shared_xaxes=True)
+                                fig.add_trace(go.Scatter(x=ts_df.index, y=ts_df, name='Observed'), 
+                                            row=1, col=1)
+                                fig.add_trace(go.Scatter(x=decomposition.trend.index, y=decomposition.trend, name='Trend'), 
+                                            row=2, col=1)
+                                fig.add_trace(go.Scatter(x=decomposition.seasonal.index, y=decomposition.seasonal, name='Seasonal'), 
+                                            row=3, col=1)
+                                fig.add_trace(go.Scatter(x=decomposition.resid.index, y=decomposition.resid, name='Residual'), 
+                                            row=4, col=1)
+                                fig.update_layout(height=600, title_text="Time Series Decomposition")
+                                st.plotly_chart(fig, use_container_width=True)
                             
                             # Add styled metrics for decomposition components
                             col1, col2, col3 = st.columns(3)
@@ -942,13 +985,19 @@ def show_correlation_visualizations(df, col_types):
             # Composition Over Time
             if "Composition Over Time" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    # Container for composition over time
-                    with st.container():
+                    # Create a container for composition over time
+                    comp_time_container = st.container()
+                    
+                    with comp_time_container:
                         comp_col = st.selectbox("Select category", cat_cols, key="time_comp_col_select")
                         metric_col = st.selectbox("Select metric", num_cols, key="time_comp_metric_select")
-                        comp_df = df.groupby([date_col, comp_col])[metric_col].sum().unstack().fillna(0)
-                        fig = px.area(comp_df, title=f"{metric_col} Composition by {comp_col} Over Time")
-                        st.plotly_chart(fig, use_container_width=True, key="composition_time_chart")
+                        
+                        # Container for the chart
+                        chart_container = st.container()
+                        with chart_container:
+                            comp_df = df.groupby([date_col, comp_col])[metric_col].sum().unstack().fillna(0)
+                            fig = px.area(comp_df, title=f"{metric_col} Composition by {comp_col} Over Time")
+                            st.plotly_chart(fig, use_container_width=True)
                         
                         # Add metric cards for composition analysis
                         if not comp_df.empty:
@@ -987,12 +1036,16 @@ def show_correlation_visualizations(df, col_types):
             # 3D Visualization
             if "3D Visualization" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    # Container for 3D visualization
-                    with st.container():
+                    # Create a container for 3D visualization
+                    viz3d_container = st.container()
+                    
+                    with viz3d_container:
                         col3d1, col3d2 = st.columns([1, 3])
+                        
                         with col3d1:
                             # Container for controls
-                            with st.container():
+                            controls_container = st.container()
+                            with controls_container:
                                 x_col = st.selectbox("X axis", num_cols, key="3d_x_col")
                                 y_col = st.selectbox("Y axis", [c for c in num_cols if c != x_col], key="3d_y_col")
                                 z_col = st.selectbox("Z axis", [c for c in num_cols if c not in [x_col, y_col]], key="3d_z_col")
@@ -1029,27 +1082,34 @@ def show_correlation_visualizations(df, col_types):
                         
                         with col3d2:
                             # Container for the chart
-                            with st.container():
+                            chart_container = st.container()
+                            with chart_container:
                                 fig = px.scatter_3d(df, x=x_col, y=y_col, z=z_col, color=color_col,
                                                  title=f"3D Visualization")
-                                st.plotly_chart(fig, use_container_width=True, key="3d_visualization_chart")
+                                st.plotly_chart(fig, use_container_width=True)
                 tab_idx += 1
             
             # Sunburst Chart
             if "Sunburst Chart" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    # Container for sunburst chart
-                    with st.container():
+                    # Create a container for sunburst chart
+                    sunburst_container = st.container()
+                    
+                    with sunburst_container:
                         path_cols = st.multiselect("Select hierarchy path", cat_cols, cat_cols[:2])
                         if path_cols:
-                            fig = px.sunburst(df, path=path_cols, values=sales_metric,
-                                             title=f"Hierarchical View")
-                            st.plotly_chart(fig, use_container_width=True, key="sunburst_chart")
+                            # Container for the chart
+                            chart_container = st.container()
+                            with chart_container:
+                                fig = px.sunburst(df, path=path_cols, values=sales_metric,
+                                                 title=f"Hierarchical View")
+                                st.plotly_chart(fig, use_container_width=True)
                             
                             # Add styled metrics for hierarchy analysis
                             if len(path_cols) >= 2:
                                 # Calculate top path
                                 grouped = df.groupby(path_cols)[sales_metric].sum().reset_index()
+
 def main():
     col1, col2 = st.columns([1, 15])
     with col1:
