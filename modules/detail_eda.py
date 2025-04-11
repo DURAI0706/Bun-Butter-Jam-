@@ -109,20 +109,29 @@ def generate_kpis(df, col_types):
 def style_metric_cards():
     st.markdown("""
         <style>
-        div[data-testid="metric-container"] {
-            background-color: #f0f2f6;
-            border-radius: 12px;
-            padding: 20px;
-            margin: 5px;
+        div.stContainer {
+            border: 1px solid rgba(128, 128, 128, 0.3);
+            border-radius: 8px;
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+            background-color: #F0F2F6;
+            transition: box-shadow 0.3s ease;
+            padding: 10px;
             text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        div[data-testid="metric-container"] > label {
-            font-size: 14px;
-            color: #555;
+        div.stContainer:hover {
+            box-shadow: 0 0 12px rgba(0, 123, 255, 0.5);
+        }
+        .metric-title {
+            font-size: 17px !important;
+            font-weight: 700 !important;
+            margin-bottom: 5px !important;
+        }
+        .metric-value {
+            font-size: 22px !important;
+            font-weight: 800 !important;
         }
         </style>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
 
 def show_kpi_cards(kpis, columns_per_row=3):
