@@ -148,7 +148,46 @@ def process_callback(auth_code):
 # --- LOGIN UI ---
 def show_login_page():
     """Render login page and handle callback"""
-    st.title("🔐 Login to Coronation Bakery Dashboard")
+    st.markdown("""
+    <style>
+    .glass-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        padding: 20px 40px;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        color: white;
+        font-size: 18px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease-in-out;
+    }
+    .glass-button:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 70vh;
+        flex-direction: column;
+    }
+    body {
+        background: linear-gradient(to right, #1e0266, #1b1bc2, #db067f);
+        color: white;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="login-container">
+        <h2>🔐 Login to Coronation Bakery Dashboard</h2>
+    """, unsafe_allow_html=True)
 
     query_params = st.query_params
 
@@ -158,35 +197,28 @@ def show_login_page():
             user_info = process_callback(query_params["code"])
             if user_info:
                 st.success(f"🎉 Welcome, {user_info.get('name', 'User')}!")
-                # Set URL to show user is logged in
                 st.query_params.update({"auth": "true"})
                 return True
 
-    # 2. If already logged in via session state
+    # 2. Already logged in via session
     if st.session_state.get("authenticated", False):
         return True
 
-    # 3. Reloaded, but URL shows auth=true → rehydrate session
+    # 3. Rehydration via query param
     if query_params.get("auth") == "true":
-        # Force session to believe user was logged in
         st.session_state["authenticated"] = True
         return True
 
-    # 4. Not authenticated at all → show login screen
-    st.markdown("""
-    <div style='text-align: center; padding: 20px;'>
-        <h3>Please sign in with your Google account to continue</h3>
-    </div>
-    """, unsafe_allow_html=True)
-
+    # 4. Not logged in yet
     auth_url = get_google_auth_url()
     if auth_url:
         st.markdown(f"""
-            <a href="{auth_url}">
-                <button style="background-color:#4285F4;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">
-                    Sign in with Google
-                </button>
+            <a class="glass-button" href="{auth_url}">
+                <img src="https://developers.google.com/identity/images/g-logo.png" width="20">
+                LOGIN
+                <span style="font-size: 18px;">🔒</span>
             </a>
+        </div>
         """, unsafe_allow_html=True)
     else:
         st.error("🚨 Failed to create Google login link.")
