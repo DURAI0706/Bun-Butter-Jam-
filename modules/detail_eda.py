@@ -814,8 +814,11 @@ def show_correlation_visualizations(df, col_types):
                         st.plotly_chart(fig, use_container_width=True, key="sunburst_chart")
 
 def main():
-    st.title("📊 Detailed Exploratory Data Analysis")
-    
+    col1, col2 = st.columns([1, 30])
+    with col1:
+        st.image("https://64.media.tumblr.com/b6edcc1a7e0d71be3acb26a2ae250290/tumblr_ne4ix7jkzj1tdidvbo1_r2_500.gif", width=30)
+    with col2:
+        st.title("Detailed Exploratory Data Analysis")    
     uploaded_file = st.sidebar.file_uploader(
         "Upload CSV or Excel file (optional, defaults to Coronation Bakery Dataset)",
         type=["csv", "xlsx", "xls"]
