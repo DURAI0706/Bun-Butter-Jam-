@@ -603,12 +603,9 @@ def show_correlation_visualizations(df, col_types):
                 if cat_cols:
                     group_col = st.selectbox("Group by", ['None'] + cat_cols)
                 
-                st.markdown("<h3 style='text-align: center;'>Statistics</h3>", unsafe_allow_html=True)
+                st.markdown("### Statistics")
                 stats = df[dist_col].describe()
-                st.dataframe(
-                    pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#c76b7a'),
-                    use_container_width=True  # Makes the dataframe take the full width available
-                )
+                st.dataframe(pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#c76b7a'))
             
             # Second row - Distribution chart
             dist_row2 = st.container()
@@ -626,6 +623,9 @@ def show_correlation_visualizations(df, col_types):
             
         if cat_cols and sales_metric:
             st.subheader("🍰 Composition Analysis")
+            
+            # First composition row - Pie chart
+            comp_row1 = st.container()
             
             with comp_row1:
                 comp_col = st.selectbox("Select category", cat_cols, key="comp_col_select")
