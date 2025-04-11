@@ -113,12 +113,13 @@ def style_metric_cards():
             border: 1px solid rgba(128, 128, 128, 0.3);
             border-radius: 8px;
             box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
-            background-color: #F0F2F6;
+            background-color: transparent; /* Changed from #F0F2F6 */
             transition: box-shadow 0.3s ease;
             padding: 10px;
             text-align: center;
             margin-bottom: 10px;
         }
+
         div.metric-container:hover {
             box-shadow: 0 0 12px rgba(0, 123, 255, 0.5);
         }
