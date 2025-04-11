@@ -152,14 +152,6 @@ def show_login_page():
     # Inject CSS for gradient background and centered glass button
     st.markdown("""
     <style>
-    /* Full page gradient background */
-    [data-testid="stAppViewContainer"] {
-        background: radial-gradient(circle at 30% 40%, #a30c72 0%, #1a0076 35%, #010047 70%, #000e8f 100%);
-        background-size: cover;
-        background-attachment: fixed;
-        color: white;
-    }
-
     .centered-login {
         display: flex;
         justify-content: center;
