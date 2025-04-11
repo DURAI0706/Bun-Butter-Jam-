@@ -631,11 +631,13 @@ def show_correlation_visualizations(df, col_types):
             comp_row1 = st.container()
             
             with comp_row1:
-                comp_col = st.selectbox("Select category", cat_cols, key="comp_col_select")
+                # Using the first categorical column by default instead of a selectbox
+                comp_col = cat_cols[0]  # Automatically use the first categorical column
                 comp_data = df.groupby(comp_col)[sales_metric].sum().reset_index()
                 fig1 = px.pie(comp_data, values=sales_metric, names=comp_col,
                             title=f"{sales_metric} by {comp_col}")
                 st.plotly_chart(fig1, use_container_width=True, key="composition_pie_chart")
+
             
             # Second composition row - Treemap
             comp_row2 = st.container()
