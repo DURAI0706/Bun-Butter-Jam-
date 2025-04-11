@@ -10,6 +10,27 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from plotly.subplots import make_subplots
 import os
 
+def convert_to_datetime(df):
+    """Convert object columns to datetime with explicit formats"""
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            try:
+                for fmt in [
+                    '%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y%m%d', 
+                    '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %I:%M %p'
+                ]:
+                    try:
+                        df[col] = pd.to_datetime(df[col], format=fmt, errors='raise')
+                        if pd.api.types.is_datetime64_any_dtype(df[col]):
+                            st.sidebar.success(f"Converted '{col}' to datetime using format: {fmt}")
+                            break
+                    except (ValueError, TypeError):
+                        continue
+            except Exception as e:
+                st.warning(f"Could not convert column '{col}' to datetime: {str(e)}")
+    return df
+
+@st.cache_data
 def load_data(uploaded_file=None):
     """Load data from uploaded file or default CSV with caching"""
     try:
@@ -27,11 +48,10 @@ def load_data(uploaded_file=None):
                 st.info("Please ensure your CSV file is in the 'data' directory and named 'Coronation Bakery Dataset.csv'")
                 return None
             df = pd.read_csv(file_path)
-        
-        # Process date columns properly
-        if 'Date' in df.columns:
-            df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y', errors='coerce')
-        
+
+        # Convert object columns to datetime where applicable
+        df = convert_to_datetime(df)
+
         # Store in session state
         st.session_state['sales_data'] = df
         return df
