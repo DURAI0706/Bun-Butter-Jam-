@@ -129,15 +129,17 @@ def style_metric_cards():
         unsafe_allow_html=True
     )
 
-def show_kpi_cards(kpis):
-    """Display dynamic KPI cards"""
-    cols = st.columns(len(kpis))
-    for i, kpi in enumerate(kpis):
-        cols[i].metric(
-            label=kpi['title'],
-            value=kpi['value'],
-            delta=kpi['delta']
-        )
+def show_kpi_cards(kpis, columns_per_row=3):
+    """Display dynamic KPI cards in a matrix layout"""
+    for i in range(0, len(kpis), columns_per_row):
+        row_kpis = kpis[i:i + columns_per_row]
+        cols = st.columns(len(row_kpis))
+        for j, kpi in enumerate(row_kpis):
+            cols[j].metric(
+                label=kpi['title'],
+                value=kpi['value'],
+                delta=kpi['delta']
+            )
     style_metric_cards()
 
 def show_missing_values(df):
