@@ -814,7 +814,7 @@ def show_correlation_visualizations(df, col_types):
                         st.plotly_chart(fig, use_container_width=True, key="sunburst_chart")
 
 def main():
-    col1, col2 = st.columns([1, 4])
+    col1, col2 = st.columns([1, 8])
     with col1:
         st.image("https://64.media.tumblr.com/b6edcc1a7e0d71be3acb26a2ae250290/tumblr_ne4ix7jkzj1tdidvbo1_r2_500.gif")
     with col2:
