@@ -221,7 +221,7 @@ def show_correlations(df, col_types):
         corr_pairs['Correlation'] = corr_pairs['Correlation'].round(3)
         corr_pairs = corr_pairs.drop_duplicates(subset=['Correlation'])
         def color_high_correlations(val):
-            color = 'red' if abs(val) > 0.7 else 'orange' if abs(val) > 0.5 else 'black'
+            color = 'red' if abs(val) > 0.7 else 'orange' if abs(val) > 0.5 else 'blue'
             return f'color: {color}'
         display_df = corr_pairs.head(20).copy()
         for col in ['Feature 1', 'Feature 2', 'Type 1', 'Type 2']:
