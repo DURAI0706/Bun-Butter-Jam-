@@ -517,34 +517,40 @@ def show_correlation_visualizations(df, col_types):
                 
                 for i, col in enumerate(cat_cols[:3]):
                     with perf_tabs[i]:
-                        col1, col2 = st.columns([3, 1])
-                        with col1:
-                            top_items = df.groupby(col)[sales_metric].sum().nlargest(5).reset_index()
-                            fig = px.bar(top_items, x=col, y=sales_metric, 
-                                        color=col, title=f"Top {col} by {sales_metric}")
-                            st.plotly_chart(fig, use_container_width=True, key=f"top_performers_chart_{i}")
-                        with col2:
-                            # Apply metric card style to key insight
-                            st.markdown("""
-                            <div class="metric-container">
-                                <p class="metric-title">Key Insight</p>
-                                <p class="metric-value">{}</p>
-                                <p>leads with <b>{:,.2f}</b> in {}</p>
-                            </div>
-                            """.format(top_items.iloc[0][col], top_items.iloc[0][sales_metric], sales_metric), 
-                            unsafe_allow_html=True)
-                            
-                            # Show proportion of top performer
-                            total = df[sales_metric].sum()
-                            proportion = top_items.iloc[0][sales_metric] / total
-                            st.progress(proportion)
-                            st.markdown("""
-                            <div class="metric-container">
-                                <p class="metric-title">Proportion</p>
-                                <p class="metric-value">{:.1%}</p>
-                                <p>of total</p>
-                            </div>
-                            """.format(proportion), unsafe_allow_html=True)
+                        # Create container for the entire tab content
+                        with st.container():
+                            col1, col2 = st.columns([3, 1])
+                            with col1:
+                                # Container for the chart
+                                with st.container():
+                                    top_items = df.groupby(col)[sales_metric].sum().nlargest(5).reset_index()
+                                    fig = px.bar(top_items, x=col, y=sales_metric, 
+                                                color=col, title=f"Top {col} by {sales_metric}")
+                                    st.plotly_chart(fig, use_container_width=True, key=f"top_performers_chart_{i}")
+                            with col2:
+                                # Container for the metrics
+                                with st.container():
+                                    # Apply metric card style to key insight
+                                    st.markdown("""
+                                    <div class="metric-container">
+                                        <p class="metric-title">Key Insight</p>
+                                        <p class="metric-value">{}</p>
+                                        <p>leads with <b>{:,.2f}</b> in {}</p>
+                                    </div>
+                                    """.format(top_items.iloc[0][col], top_items.iloc[0][sales_metric], sales_metric), 
+                                    unsafe_allow_html=True)
+                                    
+                                    # Show proportion of top performer
+                                    total = df[sales_metric].sum()
+                                    proportion = top_items.iloc[0][sales_metric] / total
+                                    st.progress(proportion)
+                                    st.markdown("""
+                                    <div class="metric-container">
+                                        <p class="metric-title">Proportion</p>
+                                        <p class="metric-value">{:.1%}</p>
+                                        <p>of total</p>
+                                    </div>
+                                    """.format(proportion), unsafe_allow_html=True)
         else:
             st.warning("No sales metric columns found for performance analysis")
                 
@@ -554,71 +560,77 @@ def show_correlation_visualizations(df, col_types):
         if date_col and sales_metric:
             st.subheader("📈 Temporal Trends")
             
-            trend_col1, trend_col2 = st.columns([1, 3])
-            
-            with trend_col1:
-                # Controls for trend analysis
-                metric_options = []
-                if sales_metric: metric_options.append(sales_metric)
-                if quantity_cols: metric_options.extend(quantity_cols[:2])
-                if amount_cols: metric_options.extend(amount_cols[:2])
+            # Create container for the entire trend analysis
+            with st.container():
+                trend_col1, trend_col2 = st.columns([1, 3])
                 
-                selected_metric = st.selectbox("Select metric", metric_options, key="trend_metric_select")
-                
-                time_groups = st.radio("Time grouping", 
-                                     ['Daily', 'Weekly', 'Monthly', 'Quarterly'],
-                                     key="time_group_select")
-                
-                st.markdown("### Trend Insight")
-                df[date_col] = pd.to_datetime(df[date_col])
-                
-                # Calculate trend data based on time grouping
-                if time_groups == 'Daily':
-                    trend_data = df.groupby(df[date_col].dt.date)[selected_metric].sum().reset_index()
-                    x_col = date_col
-                elif time_groups == 'Weekly':
-                    trend_data = df.groupby([df[date_col].dt.year.rename("Year"), df[date_col].dt.isocalendar().week.rename("Week")])[selected_metric].sum().reset_index()
-                    trend_data['Week'] = trend_data['Year'].astype(str) + '-W' + trend_data['Week'].astype(str).str.zfill(2)
-                    x_col = 'Week'
-                elif time_groups == 'Monthly':
-                    trend_data = df.groupby([df[date_col].dt.year.rename("Year"), df[date_col].dt.month.rename("Month")])[selected_metric].sum().reset_index()
-                    trend_data['Month'] = trend_data['Year'].astype(str) + '-' + trend_data['Month'].astype(str).str.zfill(2)
-                    x_col = 'Month'
-                else:
-                    trend_data = df.groupby([df[date_col].dt.year.rename("Year"), df[date_col].dt.quarter.rename("Quarter")])[selected_metric].sum().reset_index()
-                    trend_data['Quarter'] = trend_data['Year'].astype(str) + '-Q' + trend_data['Quarter'].astype(str)
-                    x_col = 'Quarter'
-                
-                peak_val = trend_data[selected_metric].max()
-                peak_time = trend_data.loc[trend_data[selected_metric].idxmax(), x_col]
-                
-                # Apply metric card style to peak value
-                st.markdown("""
-                <div class="metric-container">
-                    <p class="metric-title">Peak Period</p>
-                    <p class="metric-value">{}</p>
-                    <p>with <b>{:,.2f}</b></p>
-                </div>
-                """.format(peak_time, peak_val), unsafe_allow_html=True)
-                
-                # Calculate growth
-                first_val = trend_data.iloc[0][selected_metric]
-                last_val = trend_data.iloc[-1][selected_metric]
-                growth = (last_val - first_val) / first_val if first_val != 0 else 0
-                
-                # Apply metric card style to growth
-                st.markdown("""
-                <div class="metric-container">
-                    <p class="metric-title">Period Growth</p>
-                    <p class="metric-value">{:.1%}</p>
-                    <p>{:.1f}% change</p>
-                </div>
-                """.format(growth, growth*100), unsafe_allow_html=True)
-                
-            with trend_col2:
-                fig = px.line(trend_data, x=x_col, y=selected_metric, 
-                             title=f"{time_groups} Trend of {selected_metric}")
-                st.plotly_chart(fig, use_container_width=True, key="trend_line_chart")
+                with trend_col1:
+                    # Container for controls and metrics
+                    with st.container():
+                        # Controls for trend analysis
+                        metric_options = []
+                        if sales_metric: metric_options.append(sales_metric)
+                        if quantity_cols: metric_options.extend(quantity_cols[:2])
+                        if amount_cols: metric_options.extend(amount_cols[:2])
+                        
+                        selected_metric = st.selectbox("Select metric", metric_options, key="trend_metric_select")
+                        
+                        time_groups = st.radio("Time grouping", 
+                                             ['Daily', 'Weekly', 'Monthly', 'Quarterly'],
+                                             key="time_group_select")
+                        
+                        st.markdown("### Trend Insight")
+                        df[date_col] = pd.to_datetime(df[date_col])
+                        
+                        # Calculate trend data based on time grouping
+                        if time_groups == 'Daily':
+                            trend_data = df.groupby(df[date_col].dt.date)[selected_metric].sum().reset_index()
+                            x_col = date_col
+                        elif time_groups == 'Weekly':
+                            trend_data = df.groupby([df[date_col].dt.year.rename("Year"), df[date_col].dt.isocalendar().week.rename("Week")])[selected_metric].sum().reset_index()
+                            trend_data['Week'] = trend_data['Year'].astype(str) + '-W' + trend_data['Week'].astype(str).str.zfill(2)
+                            x_col = 'Week'
+                        elif time_groups == 'Monthly':
+                            trend_data = df.groupby([df[date_col].dt.year.rename("Year"), df[date_col].dt.month.rename("Month")])[selected_metric].sum().reset_index()
+                            trend_data['Month'] = trend_data['Year'].astype(str) + '-' + trend_data['Month'].astype(str).str.zfill(2)
+                            x_col = 'Month'
+                        else:
+                            trend_data = df.groupby([df[date_col].dt.year.rename("Year"), df[date_col].dt.quarter.rename("Quarter")])[selected_metric].sum().reset_index()
+                            trend_data['Quarter'] = trend_data['Year'].astype(str) + '-Q' + trend_data['Quarter'].astype(str)
+                            x_col = 'Quarter'
+                        
+                        peak_val = trend_data[selected_metric].max()
+                        peak_time = trend_data.loc[trend_data[selected_metric].idxmax(), x_col]
+                        
+                        # Apply metric card style to peak value
+                        st.markdown("""
+                        <div class="metric-container">
+                            <p class="metric-title">Peak Period</p>
+                            <p class="metric-value">{}</p>
+                            <p>with <b>{:,.2f}</b></p>
+                        </div>
+                        """.format(peak_time, peak_val), unsafe_allow_html=True)
+                        
+                        # Calculate growth
+                        first_val = trend_data.iloc[0][selected_metric]
+                        last_val = trend_data.iloc[-1][selected_metric]
+                        growth = (last_val - first_val) / first_val if first_val != 0 else 0
+                        
+                        # Apply metric card style to growth
+                        st.markdown("""
+                        <div class="metric-container">
+                            <p class="metric-title">Period Growth</p>
+                            <p class="metric-value">{:.1%}</p>
+                            <p>{:.1f}% change</p>
+                        </div>
+                        """.format(growth, growth*100), unsafe_allow_html=True)
+                        
+                with trend_col2:
+                    # Container for the chart
+                    with st.container():
+                        fig = px.line(trend_data, x=x_col, y=selected_metric, 
+                                     title=f"{time_groups} Trend of {selected_metric}")
+                        st.plotly_chart(fig, use_container_width=True, key="trend_line_chart")
         else:
             st.warning("Date column or sales metric not found for trend analysis")
     
@@ -631,9 +643,7 @@ def show_correlation_visualizations(df, col_types):
         
         if num_cols:
             # First row - Distribution controls and statistics
-            dist_row1 = st.container()
-            
-            with dist_row1:
+            with st.container():
                 dist_col = st.selectbox("Select metric", num_cols)
                 if cat_cols:
                     group_col = st.selectbox("Group by", ['None'] + cat_cols)
@@ -667,9 +677,7 @@ def show_correlation_visualizations(df, col_types):
                     """.format(stats['std']), unsafe_allow_html=True)
             
             # Second row - Distribution chart
-            dist_row2 = st.container()
-            
-            with dist_row2:
+            with st.container():
                 if cat_cols and group_col != 'None':
                     fig = px.box(df, x=group_col, y=dist_col, color=group_col,
                                 title=f"Distribution of {dist_col} by {group_col}")
@@ -684,9 +692,7 @@ def show_correlation_visualizations(df, col_types):
             st.subheader("🍰 Composition Analysis")
             
             # First composition row - Pie chart
-            comp_row1 = st.container()
-            
-            with comp_row1:
+            with st.container():
                 comp_col = cat_cols[0]
                 comp_data = df.groupby(comp_col)[sales_metric].sum().reset_index()
                 fig1 = px.pie(comp_data, values=sales_metric, names=comp_col,
@@ -694,9 +700,7 @@ def show_correlation_visualizations(df, col_types):
                 st.plotly_chart(fig1, use_container_width=True, key="composition_pie_chart")
             
             # Second composition row - Treemap
-            comp_row2 = st.container()
-            
-            with comp_row2:
+            with st.container():
                 if len(cat_cols) > 1:
                     fig2 = px.treemap(df, path=cat_cols[:2], values=sales_metric,
                                     title=f"Hierarchical View of {sales_metric}")
@@ -708,47 +712,53 @@ def show_correlation_visualizations(df, col_types):
         if len(num_cols) >= 2:
             st.subheader("🔗 Correlation Analysis")
             
-            rel_col1, rel_col2 = st.columns([1, 3])
-            
-            with rel_col1:
-                x_col = st.selectbox("X-axis", num_cols)
-                y_col = st.selectbox("Y-axis", [col for col in num_cols if col != x_col])
+            # Container for the entire relationship analysis
+            with st.container():
+                rel_col1, rel_col2 = st.columns([1, 3])
                 
-                if cat_cols:
-                    color_col = st.selectbox("Color by", ['None'] + cat_cols)
-                    color_col = None if color_col == 'None' else color_col
+                with rel_col1:
+                    # Container for controls and metrics
+                    with st.container():
+                        x_col = st.selectbox("X-axis", num_cols)
+                        y_col = st.selectbox("Y-axis", [col for col in num_cols if col != x_col])
+                        
+                        if cat_cols:
+                            color_col = st.selectbox("Color by", ['None'] + cat_cols)
+                            color_col = None if color_col == 'None' else color_col
+                        
+                        # Calculate correlation
+                        corr = df[[x_col, y_col]].corr().iloc[0,1]
+                        
+                        # Apply metric card style to correlation coefficient
+                        st.markdown("""
+                        <div class="metric-container">
+                            <p class="metric-title">Correlation Coefficient</p>
+                            <p class="metric-value">{:.2f}</p>
+                        </div>
+                        """.format(corr), unsafe_allow_html=True)
+                        
+                        strength = "Strong" if abs(corr) > 0.7 else "Moderate" if abs(corr) > 0.3 else "Weak"
+                        direction = "Positive" if corr > 0 else "Negative"
+                        if corr != 0:
+                            # Apply metric card style to relationship description
+                            st.markdown("""
+                            <div class="metric-container">
+                                <p class="metric-title">Relationship</p>
+                                <p class="metric-value">{} {}</p>
+                            </div>
+                            """.format(strength, direction), unsafe_allow_html=True)
                 
-                # Calculate correlation
-                corr = df[[x_col, y_col]].corr().iloc[0,1]
-                
-                # Apply metric card style to correlation coefficient
-                st.markdown("""
-                <div class="metric-container">
-                    <p class="metric-title">Correlation Coefficient</p>
-                    <p class="metric-value">{:.2f}</p>
-                </div>
-                """.format(corr), unsafe_allow_html=True)
-                
-                strength = "Strong" if abs(corr) > 0.7 else "Moderate" if abs(corr) > 0.3 else "Weak"
-                direction = "Positive" if corr > 0 else "Negative"
-                if corr != 0:
-                    # Apply metric card style to relationship description
-                    st.markdown("""
-                    <div class="metric-container">
-                        <p class="metric-title">Relationship</p>
-                        <p class="metric-value">{} {}</p>
-                    </div>
-                    """.format(strength, direction), unsafe_allow_html=True)
-            
-            with rel_col2:
-                if cat_cols and color_col:
-                    fig = px.scatter(df, x=x_col, y=y_col, color=color_col,
-                                   title=f"{x_col} vs {y_col} by {color_col}")
-                else:
-                    fig = px.scatter(df, x=x_col, y=y_col,
-                                   title=f"{x_col} vs {y_col}")
-                    
-                st.plotly_chart(fig, use_container_width=True, key="correlation_scatter_chart")
+                with rel_col2:
+                    # Container for the chart
+                    with st.container():
+                        if cat_cols and color_col:
+                            fig = px.scatter(df, x=x_col, y=y_col, color=color_col,
+                                           title=f"{x_col} vs {y_col} by {color_col}")
+                        else:
+                            fig = px.scatter(df, x=x_col, y=y_col,
+                                           title=f"{x_col} vs {y_col}")
+                            
+                        st.plotly_chart(fig, use_container_width=True, key="correlation_scatter_chart")
         else:
             st.warning("Need at least 2 numeric columns for relationship analysis")
     
@@ -771,260 +781,275 @@ def show_correlation_visualizations(df, col_types):
             # Correlation Matrix
             if "Correlation Matrix" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    selected_num_cols = st.multiselect("Select metrics for correlation", num_cols, num_cols[:5])
-                    if len(selected_num_cols) >= 2:
-                        corr_matrix = df[selected_num_cols].corr()
-                        fig = px.imshow(corr_matrix,
-                                      text_auto=True,
-                                      aspect="auto",
-                                      color_continuous_scale='RdBu',
-                                      title="Correlation Matrix")
-                        fig.update_layout(height=600)
-                        st.plotly_chart(fig, use_container_width=True, key="correlation_matrix_chart")
-                        
-                        # Add styled metric for strongest correlation
+                    # Container for correlation matrix
+                    with st.container():
+                        selected_num_cols = st.multiselect("Select metrics for correlation", num_cols, num_cols[:5])
                         if len(selected_num_cols) >= 2:
-                            corr_values = corr_matrix.values
-                            np.fill_diagonal(corr_values, 0)  # Ignore self-correlations
-                            max_corr_idx = np.unravel_index(np.abs(corr_values).argmax(), corr_values.shape)
-                            max_corr = corr_values[max_corr_idx]
-                            col1, col2 = selected_num_cols[max_corr_idx[0]], selected_num_cols[max_corr_idx[1]]
+                            corr_matrix = df[selected_num_cols].corr()
+                            fig = px.imshow(corr_matrix,
+                                          text_auto=True,
+                                          aspect="auto",
+                                          color_continuous_scale='RdBu',
+                                          title="Correlation Matrix")
+                            fig.update_layout(height=600)
+                            st.plotly_chart(fig, use_container_width=True, key="correlation_matrix_chart")
                             
-                            st.markdown("""
-                            <div class="metric-container">
-                                <p class="metric-title">Strongest Correlation</p>
-                                <p class="metric-value">{:.2f}</p>
-                                <p>between <b>{}</b> and <b>{}</b></p>
-                            </div>
-                            """.format(max_corr, col1, col2), unsafe_allow_html=True)
+                            # Add styled metric for strongest correlation
+                            if len(selected_num_cols) >= 2:
+                                corr_values = corr_matrix.values
+                                np.fill_diagonal(corr_values, 0)  # Ignore self-correlations
+                                max_corr_idx = np.unravel_index(np.abs(corr_values).argmax(), corr_values.shape)
+                                max_corr = corr_values[max_corr_idx]
+                                col1, col2 = selected_num_cols[max_corr_idx[0]], selected_num_cols[max_corr_idx[1]]
+                                
+                                st.markdown("""
+                                <div class="metric-container">
+                                    <p class="metric-title">Strongest Correlation</p>
+                                    <p class="metric-value">{:.2f}</p>
+                                    <p>between <b>{}</b> and <b>{}</b></p>
+                                </div>
+                                """.format(max_corr, col1, col2), unsafe_allow_html=True)
                 tab_idx += 1
             
             # Normalized Metrics
             if "Normalized Metrics" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    selected_metrics = st.multiselect("Select metrics to compare", num_cols, num_cols[:3])
-                    if len(selected_metrics) >= 1:
-                        norm_df = df[selected_metrics].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
+                    # Container for normalized metrics
+                    with st.container():
+                        selected_metrics = st.multiselect("Select metrics to compare", num_cols, num_cols[:3])
+                        if len(selected_metrics) >= 1:
+                            norm_df = df[selected_metrics].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
 
-                        try:
-                            if date_col and date_col in df.columns:
-                                norm_df[date_col] = df[date_col]
-                                # Optional: convert to datetime if it looks like a date
-                                if "date" in date_col.lower() or "time" in date_col.lower():
-                                    norm_df[date_col] = pd.to_datetime(norm_df[date_col], errors="coerce")
+                            try:
+                                if date_col and date_col in df.columns:
+                                    norm_df[date_col] = df[date_col]
+                                    # Optional: convert to datetime if it looks like a date
+                                    if "date" in date_col.lower() or "time" in date_col.lower():
+                                        norm_df[date_col] = pd.to_datetime(norm_df[date_col], errors="coerce")
 
-                                melt_df = norm_df.melt(id_vars=date_col, var_name='Metric', value_name='Value')
-                                fig = px.line(
-                                    melt_df,
-                                    x=date_col,
-                                    y='Value',
-                                    color='Metric',
-                                    title="Normalized Metric Comparison",
-                                    line_shape="linear"
-                                )
-                            else:
-                                melt_df = norm_df.reset_index().melt(id_vars='index', var_name='Metric', value_name='Value')
-                                fig = px.line(
-                                    melt_df,
-                                    x='index',
-                                    y='Value',
-                                    color='Metric',
-                                    title="Normalized Metric Comparison"
-                                )
+                                    melt_df = norm_df.melt(id_vars=date_col, var_name='Metric', value_name='Value')
+                                    fig = px.line(
+                                        melt_df,
+                                        x=date_col,
+                                        y='Value',
+                                        color='Metric',
+                                        title="Normalized Metric Comparison",
+                                        line_shape="linear"
+                                    )
+                                else:
+                                    melt_df = norm_df.reset_index().melt(id_vars='index', var_name='Metric', value_name='Value')
+                                    fig = px.line(
+                                        melt_df,
+                                        x='index',
+                                        y='Value',
+                                        color='Metric',
+                                        title="Normalized Metric Comparison"
+                                    )
 
-                            st.plotly_chart(fig, use_container_width=True, key="normalized_metrics_chart")
-                            
-                            # Add styled metrics for min/max rates of change
-                            if len(selected_metrics) >= 1 and date_col:
-                                st.markdown("### Rate of Change")
-                                col1, col2 = st.columns(2)
+                                st.plotly_chart(fig, use_container_width=True, key="normalized_metrics_chart")
                                 
-                                for i, metric in enumerate(selected_metrics[:2]):  # Show stats for up to 2 metrics
-                                    with col1 if i == 0 else col2:
-                                        # Calculate rate of change
-                                        metric_series = norm_df[metric].dropna()
-                                        if len(metric_series) > 1:
-                                            rate_of_change = metric_series.pct_change().dropna()
-                                            max_increase = rate_of_change.max()
-                                            max_decrease = rate_of_change.min()
-                                            
-                                            st.markdown("""
-                                            <div class="metric-container">
-                                                <p class="metric-title">{}</p>
-                                                <p class="metric-value">+{:.1%}</p>
-                                                <p>Max Increase</p>
-                                            </div>
-                                            """.format(metric, max_increase), unsafe_allow_html=True)
-                                            
-                                            st.markdown("""
-                                            <div class="metric-container">
-                                                <p class="metric-title">{}</p>
-                                                <p class="metric-value">{:.1%}</p>
-                                                <p>Max Decrease</p>
-                                            </div>
-                                            """.format(metric, max_decrease), unsafe_allow_html=True)
+                                # Add styled metrics for min/max rates of change
+                                if len(selected_metrics) >= 1 and date_col:
+                                    st.markdown("### Rate of Change")
+                                    col1, col2 = st.columns(2)
+                                    
+                                    for i, metric in enumerate(selected_metrics[:2]):  # Show stats for up to 2 metrics
+                                        with col1 if i == 0 else col2:
+                                            # Calculate rate of change
+                                            metric_series = norm_df[metric].dropna()
+                                            if len(metric_series) > 1:
+                                                rate_of_change = metric_series.pct_change().dropna()
+                                                max_increase = rate_of_change.max()
+                                                max_decrease = rate_of_change.min()
+                                                
+                                                st.markdown("""
+                                                <div class="metric-container">
+                                                    <p class="metric-title">{}</p>
+                                                    <p class="metric-value">+{:.1%}</p>
+                                                    <p>Max Increase</p>
+                                                </div>
+                                                """.format(metric, max_increase), unsafe_allow_html=True)
+                                                
+                                                st.markdown("""
+                                                <div class="metric-container">
+                                                    <p class="metric-title">{}</p>
+                                                    <p class="metric-value">{:.1%}</p>
+                                                    <p>Max Decrease</p>
+                                                </div>
+                                                """.format(metric, max_decrease), unsafe_allow_html=True)
 
-                        except Exception as e:
-                            st.error(f"Error generating normalized metric comparison plot: {e}")
-                            st.dataframe(norm_df.head())  # Help with debugging
+                            except Exception as e:
+                                st.error(f"Error generating normalized metric comparison plot: {e}")
+                                st.dataframe(norm_df.head())  # Help with debugging
 
                 tab_idx += 1
 
             # Time Decomposition
             if "Time Decomposition" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    ts_col = st.selectbox("Select metric to decompose", num_cols, key="ts_col_select") 
-                    try:
-                        ts_df = df.set_index(date_col)[ts_col].resample('D').sum().ffill()
-                        decomposition = seasonal_decompose(ts_df, model='additive', period=7)
-                        fig = make_subplots(rows=4, cols=1, shared_xaxes=True)
-                        fig.add_trace(go.Scatter(x=ts_df.index, y=ts_df, name='Observed'), 
-                                    row=1, col=1)
-                        fig.add_trace(go.Scatter(x=decomposition.trend.index, y=decomposition.trend, name='Trend'), 
-                                    row=2, col=1)
-                        fig.add_trace(go.Scatter(x=decomposition.seasonal.index, y=decomposition.seasonal, name='Seasonal'), 
-                                    row=3, col=1)
-                        fig.add_trace(go.Scatter(x=decomposition.resid.index, y=decomposition.resid, name='Residual'), 
-                                    row=4, col=1)
-                        fig.update_layout(height=600, title_text="Time Series Decomposition")
-                        st.plotly_chart(fig, use_container_width=True, key="time_decomposition_chart")
-                        
-                        # Add styled metrics for decomposition components
-                        col1, col2, col3 = st.columns(3)
-                        
-                        with col1:
-                            trend_strength = 1 - (decomposition.resid.var() / (decomposition.trend.var() + decomposition.resid.var()))
-                            st.markdown("""
-                            <div class="metric-container">
-                                <p class="metric-title">Trend Strength</p>
-                                <p class="metric-value">{:.2f}</p>
-                            </div>
-                            """.format(trend_strength), unsafe_allow_html=True)
+                    # Container for time decomposition
+                    with st.container():
+                        ts_col = st.selectbox("Select metric to decompose", num_cols, key="ts_col_select") 
+                        try:
+                            ts_df = df.set_index(date_col)[ts_col].resample('D').sum().ffill()
+                            decomposition = seasonal_decompose(ts_df, model='additive', period=7)
+                            fig = make_subplots(rows=4, cols=1, shared_xaxes=True)
+                            fig.add_trace(go.Scatter(x=ts_df.index, y=ts_df, name='Observed'), 
+                                        row=1, col=1)
+                            fig.add_trace(go.Scatter(x=decomposition.trend.index, y=decomposition.trend, name='Trend'), 
+                                        row=2, col=1)
+                            fig.add_trace(go.Scatter(x=decomposition.seasonal.index, y=decomposition.seasonal, name='Seasonal'), 
+                                        row=3, col=1)
+                            fig.add_trace(go.Scatter(x=decomposition.resid.index, y=decomposition.resid, name='Residual'), 
+                                        row=4, col=1)
+                            fig.update_layout(height=600, title_text="Time Series Decomposition")
+                            st.plotly_chart(fig, use_container_width=True, key="time_decomposition_chart")
                             
-                        with col2:
-                            seasonal_strength = 1 - (decomposition.resid.var() / (decomposition.seasonal.var() + decomposition.resid.var()))
-                            st.markdown("""
-                            <div class="metric-container">
-                                <p class="metric-title">Seasonal Strength</p>
-                                <p class="metric-value">{:.2f}</p>
-                            </div>
-                            """.format(seasonal_strength), unsafe_allow_html=True)
+                            # Add styled metrics for decomposition components
+                            col1, col2, col3 = st.columns(3)
                             
-                        with col3:
-                            residual_strength = decomposition.resid.std() / ts_df.std()
-                            st.markdown("""
-                            <div class="metric-container">
-                                <p class="metric-title">Residual Ratio</p>
-                                <p class="metric-value">{:.2f}</p>
-                            </div>
-                            """.format(residual_strength), unsafe_allow_html=True)
-                            
-                    except Exception as e:
-                        st.warning(f"Couldn't decompose: {str(e)}")
+                            with col1:
+                                trend_strength = 1 - (decomposition.resid.var() / (decomposition.trend.var() + decomposition.resid.var()))
+                                st.markdown("""
+                                <div class="metric-container">
+                                    <p class="metric-title">Trend Strength</p>
+                                    <p class="metric-value">{:.2f}</p>
+                                </div>
+                                """.format(trend_strength), unsafe_allow_html=True)
+                                
+                            with col2:
+                                seasonal_strength = 1 - (decomposition.resid.var() / (decomposition.seasonal.var() + decomposition.resid.var()))
+                                st.markdown("""
+                                <div class="metric-container">
+                                    <p class="metric-title">Seasonal Strength</p>
+                                    <p class="metric-value">{:.2f}</p>
+                                </div>
+                                """.format(seasonal_strength), unsafe_allow_html=True)
+                                
+                            with col3:
+                                residual_strength = decomposition.resid.std() / ts_df.std()
+                                st.markdown("""
+                                <div class="metric-container">
+                                    <p class="metric-title">Residual Ratio</p>
+                                    <p class="metric-value">{:.2f}</p>
+                                </div>
+                                """.format(residual_strength), unsafe_allow_html=True)
+                                
+                        except Exception as e:
+                            st.warning(f"Couldn't decompose: {str(e)}")
                 tab_idx += 1
             
             # Composition Over Time
             if "Composition Over Time" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    comp_col = st.selectbox("Select category", cat_cols, key="time_comp_col_select")
-                    metric_col = st.selectbox("Select metric", num_cols, key="time_comp_metric_select")
-                    comp_df = df.groupby([date_col, comp_col])[metric_col].sum().unstack().fillna(0)
-                    fig = px.area(comp_df, title=f"{metric_col} Composition by {comp_col} Over Time")
-                    st.plotly_chart(fig, use_container_width=True, key="composition_time_chart")
-                    
-                    # Add metric cards for composition analysis
-                    if not comp_df.empty:
-                        # Calculate dominant category for each time period
-                        dominant_categories = comp_df.idxmax(axis=1)
-                        most_frequent = dominant_categories.value_counts().idxmax()
+                    # Container for composition over time
+                    with st.container():
+                        comp_col = st.selectbox("Select category", cat_cols, key="time_comp_col_select")
+                        metric_col = st.selectbox("Select metric", num_cols, key="time_comp_metric_select")
+                        comp_df = df.groupby([date_col, comp_col])[metric_col].sum().unstack().fillna(0)
+                        fig = px.area(comp_df, title=f"{metric_col} Composition by {comp_col} Over Time")
+                        st.plotly_chart(fig, use_container_width=True, key="composition_time_chart")
                         
-                        # Calculate category with highest growth
-                        if len(comp_df) > 1:
-                            first_period = comp_df.iloc[0]
-                            last_period = comp_df.iloc[-1]
-                            growth_pct = (last_period - first_period) / first_period.replace(0, 1) * 100
-                            fastest_growing = growth_pct.idxmax()
-                            growth_val = growth_pct.max()
+                        # Add metric cards for composition analysis
+                        if not comp_df.empty:
+                            # Calculate dominant category for each time period
+                            dominant_categories = comp_df.idxmax(axis=1)
+                            most_frequent = dominant_categories.value_counts().idxmax()
                             
-                            col1, col2 = st.columns(2)
-                            with col1:
-                                st.markdown("""
-                                <div class="metric-container">
-                                    <p class="metric-title">Dominant Category</p>
-                                    <p class="metric-value">{}</p>
-                                    <p>Most frequently leading</p>
-                                </div>
-                                """.format(most_frequent), unsafe_allow_html=True)
-                            
-                            with col2:
-                                st.markdown("""
-                                <div class="metric-container">
-                                    <p class="metric-title">Fastest Growing</p>
-                                    <p class="metric-value">{}</p>
-                                    <p>{:.1f}% growth</p>
-                                </div>
-                                """.format(fastest_growing, growth_val), unsafe_allow_html=True)
+                            # Calculate category with highest growth
+                            if len(comp_df) > 1:
+                                first_period = comp_df.iloc[0]
+                                last_period = comp_df.iloc[-1]
+                                growth_pct = (last_period - first_period) / first_period.replace(0, 1) * 100
+                                fastest_growing = growth_pct.idxmax()
+                                growth_val = growth_pct.max()
+                                
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    st.markdown("""
+                                    <div class="metric-container">
+                                        <p class="metric-title">Dominant Category</p>
+                                        <p class="metric-value">{}</p>
+                                        <p>Most frequently leading</p>
+                                    </div>
+                                    """.format(most_frequent), unsafe_allow_html=True)
+                                
+                                with col2:
+                                    st.markdown("""
+                                    <div class="metric-container">
+                                        <p class="metric-title">Fastest Growing</p>
+                                        <p class="metric-value">{}</p>
+                                        <p>{:.1f}% growth</p>
+                                    </div>
+                                    """.format(fastest_growing, growth_val), unsafe_allow_html=True)
                 tab_idx += 1
             
             # 3D Visualization
             if "3D Visualization" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    col3d1, col3d2 = st.columns([1, 3])
-                    with col3d1:
-                        x_col = st.selectbox("X axis", num_cols, key="3d_x_col")
-                        y_col = st.selectbox("Y axis", [c for c in num_cols if c != x_col], key="3d_y_col")
-                        z_col = st.selectbox("Z axis", [c for c in num_cols if c not in [x_col, y_col]], key="3d_z_col")
+                    # Container for 3D visualization
+                    with st.container():
+                        col3d1, col3d2 = st.columns([1, 3])
+                        with col3d1:
+                            # Container for controls
+                            with st.container():
+                                x_col = st.selectbox("X axis", num_cols, key="3d_x_col")
+                                y_col = st.selectbox("Y axis", [c for c in num_cols if c != x_col], key="3d_y_col")
+                                z_col = st.selectbox("Z axis", [c for c in num_cols if c not in [x_col, y_col]], key="3d_z_col")
+                                
+                                if cat_cols:
+                                    color_col = st.selectbox("Color by", ['None'] + cat_cols, key="3d_color_col")
+                                    color_col = None if color_col == 'None' else color_col
+                                
+                                # Add styled metric cards for 3D visualization
+                                st.markdown("""
+                                <div class="metric-container">
+                                    <p class="metric-title">Data Points</p>
+                                    <p class="metric-value">{:,}</p>
+                                </div>
+                                """.format(len(df)), unsafe_allow_html=True)
+                                
+                                # Calculate and display correlation between the three dimensions
+                                corr_xy = df[[x_col, y_col]].corr().iloc[0,1]
+                                corr_xz = df[[x_col, z_col]].corr().iloc[0,1]
+                                corr_yz = df[[y_col, z_col]].corr().iloc[0,1]
+                                
+                                st.markdown("""
+                                <div class="metric-container">
+                                    <p class="metric-title">Correlations</p>
+                                    <p><b>{} & {}:</b> {:.2f}</p>
+                                    <p><b>{} & {}:</b> {:.2f}</p>
+                                    <p><b>{} & {}:</b> {:.2f}</p>
+                                </div>
+                                """.format(
+                                    x_col, y_col, corr_xy,
+                                    x_col, z_col, corr_xz,
+                                    y_col, z_col, corr_yz
+                                ), unsafe_allow_html=True)
                         
-                        if cat_cols:
-                            color_col = st.selectbox("Color by", ['None'] + cat_cols, key="3d_color_col")
-                            color_col = None if color_col == 'None' else color_col
-                        
-                        # Add styled metric cards for 3D visualization
-                        st.markdown("""
-                        <div class="metric-container">
-                            <p class="metric-title">Data Points</p>
-                            <p class="metric-value">{:,}</p>
-                        </div>
-                        """.format(len(df)), unsafe_allow_html=True)
-                        
-                        # Calculate and display correlation between the three dimensions
-                        corr_xy = df[[x_col, y_col]].corr().iloc[0,1]
-                        corr_xz = df[[x_col, z_col]].corr().iloc[0,1]
-                        corr_yz = df[[y_col, z_col]].corr().iloc[0,1]
-                        
-                        st.markdown("""
-                        <div class="metric-container">
-                            <p class="metric-title">Correlations</p>
-                            <p><b>{} & {}:</b> {:.2f}</p>
-                            <p><b>{} & {}:</b> {:.2f}</p>
-                            <p><b>{} & {}:</b> {:.2f}</p>
-                        </div>
-                        """.format(
-                            x_col, y_col, corr_xy,
-                            x_col, z_col, corr_xz,
-                            y_col, z_col, corr_yz
-                        ), unsafe_allow_html=True)
-                    
-                    with col3d2:
-                        fig = px.scatter_3d(df, x=x_col, y=y_col, z=z_col, color=color_col,
-                                         title=f"3D Visualization")
-                        st.plotly_chart(fig, use_container_width=True, key="3d_visualization_chart")
+                        with col3d2:
+                            # Container for the chart
+                            with st.container():
+                                fig = px.scatter_3d(df, x=x_col, y=y_col, z=z_col, color=color_col,
+                                                 title=f"3D Visualization")
+                                st.plotly_chart(fig, use_container_width=True, key="3d_visualization_chart")
                 tab_idx += 1
             
             # Sunburst Chart
             if "Sunburst Chart" in adv_tab_names:
                 with adv_tabs[tab_idx]:
-                    path_cols = st.multiselect("Select hierarchy path", cat_cols, cat_cols[:2])
-                    if path_cols:
-                        fig = px.sunburst(df, path=path_cols, values=sales_metric,
-                                         title=f"Hierarchical View")
-                        st.plotly_chart(fig, use_container_width=True, key="sunburst_chart")
-                        
-                        # Add styled metrics for hierarchy analysis
-                        if len(path_cols) >= 2:
-                            # Calculate top path
-                            grouped = df.groupby(path_cols)[sales_metric].sum().reset_index()
-
+                    # Container for sunburst chart
+                    with st.container():
+                        path_cols = st.multiselect("Select hierarchy path", cat_cols, cat_cols[:2])
+                        if path_cols:
+                            fig = px.sunburst(df, path=path_cols, values=sales_metric,
+                                             title=f"Hierarchical View")
+                            st.plotly_chart(fig, use_container_width=True, key="sunburst_chart")
+                            
+                            # Add styled metrics for hierarchy analysis
+                            if len(path_cols) >= 2:
+                                # Calculate top path
+                                grouped = df.groupby(path_cols)[sales_metric].sum().reset_index()
 def main():
     col1, col2 = st.columns([1, 15])
     with col1:
