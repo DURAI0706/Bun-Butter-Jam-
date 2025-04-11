@@ -605,7 +605,7 @@ def show_correlation_visualizations(df, col_types):
                 
                 st.markdown("### Statistics")
                 stats = df[dist_col].describe()
-                st.dataframe(pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#fffd75'))
+                st.dataframe(pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#c76b7a'))
             
             # Second row - Distribution chart
             dist_row2 = st.container()
