@@ -631,13 +631,36 @@ def show_correlation_visualizations(df, col_types):
             comp_row1 = st.container()
             
             with comp_row1:
-                # Using the first categorical column by default instead of a selectbox
-                comp_col = cat_cols[0]  # Automatically use the first categorical column
+                # Make pie chart interactive
+                comp_col = cat_cols[0]  # Default to first categorical column
                 comp_data = df.groupby(comp_col)[sales_metric].sum().reset_index()
-                fig1 = px.pie(comp_data, values=sales_metric, names=comp_col,
-                            title=f"{sales_metric} by {comp_col}")
+                
+                # Create a more interactive pie chart
+                fig1 = px.pie(
+                    comp_data, 
+                    values=sales_metric, 
+                    names=comp_col,
+                    title=f"{sales_metric} by {comp_col}",
+                    hover_data=[sales_metric],  # Show values on hover
+                    hole=0.4,                   # Create a donut chart for better visualization
+                    custom_data=[comp_col]      # Include category name in custom data
+                )
+                
+                # Add interactive elements
+                fig1.update_traces(
+                    textinfo='percent+label',   # Show both percentage and label
+                    textposition='inside',      # Position text inside slices
+                    hovertemplate='<b>%{customdata}</b><br>%{label}<br>Value: %{value}<br>Percentage: %{percent:.1%}<extra></extra>'
+                )
+                
+                # Add interactivity options
+                fig1.update_layout(
+                    clickmode='event+select',   # Enable clicking on slices
+                    uniformtext_minsize=12,     # Minimum text size
+                    uniformtext_mode='hide'     # Hide text if it doesn't fit
+                )
+                
                 st.plotly_chart(fig1, use_container_width=True, key="composition_pie_chart")
-
             
             # Second composition row - Treemap
             comp_row2 = st.container()
