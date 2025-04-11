@@ -848,19 +848,15 @@ def main():
 
     show_kpi_cards(generate_kpis(df, col_types))
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "📋 Preview", "🔍 Distributions", "📈 Time Series", 
-        "🧩 Missing Values", "📊 Correlations", "✨ Smart Visuals"
+        "📋 Preview", "✨ Smart Visuals", "📊 Correlations", 
+        "🧩 Missing Values", 
     ])
 
     with tab1:
         show_data_preview(df)
     with tab2:
-        show_distributions(df, col_types)
+        show_correlation_visualizations(df, col_types)    
     with tab3:
-        show_time_series(df, col_types)
+        show_correlations(df, col_types)
     with tab4:
         show_missing_values(df)
-    with tab5:
-        show_correlations(df, col_types)
-    with tab6:
-        show_correlation_visualizations(df, col_types)
