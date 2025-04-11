@@ -22,7 +22,7 @@ def load_data(uploaded_file=None):
                 df = pd.read_excel(uploaded_file)
         else:
             # Load default data file from specific path
-            file_path = os.path.join('data', 'Coronation_Bakery_version_3.csv')
+            file_path = os.path.join('data', 'Coronation Bakery Dataset.csv')
             if not os.path.exists(file_path):
                 st.error(f"Data file not found at: {file_path}")
                 st.info("Please ensure your CSV file is in the 'data' directory and named 'Coronation_Bakery_version_3.csv'")
