@@ -148,9 +148,11 @@ def process_callback(auth_code):
 # --- LOGIN UI ---
 def show_login_page():
     """Render login page and handle callback"""
+
+    # Inject CSS for gradient background and centered glass button
     st.markdown("""
     <style>
-    /* Page background gradient recreation */
+    /* Full page gradient background */
     [data-testid="stAppViewContainer"] {
         background: radial-gradient(circle at 30% 40%, #a30c72 0%, #1a0076 35%, #010047 70%, #000e8f 100%);
         background-size: cover;
@@ -158,49 +160,44 @@ def show_login_page():
         color: white;
     }
 
-    /* Centered login container */
-    .login-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        height: 85vh;
+    /* Center container */
+    .centered-login {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
     }
 
-    /* Glass button style */
+    /* Glass-style login button */
     .glass-button {
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        justify-content: center;
         gap: 10px;
-        padding: 16px 32px;
-        background: rgba(255, 255, 255, 0.08);
+        padding: 14px 30px;
+        background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 20px;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        border-radius: 16px;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
         color: white;
         font-size: 18px;
-        font-weight: 600;
+        font-weight: bold;
         text-decoration: none;
-        transition: all 0.3s ease-in-out;
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
     }
 
     .glass-button:hover {
-        background: rgba(255, 255, 255, 0.15);
-        transform: scale(1.03);
+        background: rgba(255, 255, 255, 0.2);
+        transform: scale(1.05);
     }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class="login-container">
-        <h2>🔐 Login to Coronation Bakery Dashboard</h2>
-    """, unsafe_allow_html=True)
-
     query_params = st.query_params
 
+    # 1. Handle OAuth callback
     if "code" in query_params:
         with st.spinner("Authenticating..."):
             user_info = process_callback(query_params["code"])
@@ -209,17 +206,22 @@ def show_login_page():
                 st.query_params.update({"auth": "true"})
                 return True
 
+    # 2. Already authenticated
     if st.session_state.get("authenticated", False):
         return True
 
+    # 3. Reloaded and still authenticated
     if query_params.get("auth") == "true":
         st.session_state["authenticated"] = True
         return True
 
+    # 4. Show login page
     auth_url = get_google_auth_url()
     if auth_url:
         st.markdown(f"""
-            <a class="glass-button" href="{auth_url}">
+        <div class="centered-login">
+            <h2>🔐 Login to Coronation Bakery Dashboard</h2><br>
+            <a href="{auth_url}" class="glass-button">
                 <img src="https://developers.google.com/identity/images/g-logo.png" width="20">
                 LOGIN
                 <span style="font-size: 18px;">🔒</span>
@@ -230,6 +232,7 @@ def show_login_page():
         st.error("🚨 Failed to create Google login link.")
 
     return False
+
 
 
 
