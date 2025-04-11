@@ -10,7 +10,6 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from plotly.subplots import make_subplots
 import os
 
-@st.cache_data
 def load_data(uploaded_file=None):
     """Load data from uploaded file or default CSV with caching"""
     try:
@@ -25,11 +24,11 @@ def load_data(uploaded_file=None):
             file_path = os.path.join('data', 'Coronation Bakery Dataset.csv')
             if not os.path.exists(file_path):
                 st.error(f"Data file not found at: {file_path}")
-                st.info("Please ensure your CSV file is in the 'data' directory and named 'Coronation_Bakery_version_3.csv'")
+                st.info("Please ensure your CSV file is in the 'data' directory and named 'Coronation Bakery Dataset.csv'")
                 return None
             df = pd.read_csv(file_path)
         
-        # Process date columns properly regardless of source
+        # Process date columns properly
         if 'Date' in df.columns:
             df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y', errors='coerce')
         
@@ -324,43 +323,54 @@ def safe_display_dataframe(df, height=None):
 def create_filters(df, col_types):
     """Create dynamic filters in sidebar"""
     st.sidebar.header("Filters")
-    date_col = df.select_dtypes(include=['datetime']).columns.tolist()
-    if date_col:
-        selected_date_col = st.sidebar.selectbox("Select date column for filtering", date_col)
+    
+    # Filter by date
+    date_cols = df.select_dtypes(include=['datetime']).columns.tolist()
+    if date_cols:
+        selected_date_col = st.sidebar.selectbox("Select date column for filtering", date_cols)
         min_date = df[selected_date_col].min()
         max_date = df[selected_date_col].max()
         
-        date_range = st.sidebar.date_input(
-            f"Select date range for {selected_date_col}",
-            value=(min_date, max_date),
-            min_value=min_date,
-            max_value=max_date
-        )
-        
-        if len(date_range) == 2:
-            start_date = pd.to_datetime(date_range[0])
-            end_date = pd.to_datetime(date_range[1])
-            df = df[(df[selected_date_col] >= start_date) & 
-                    (df[selected_date_col] <= end_date)]
-            
-    for col in col_types['numeric'][:3]:
-        min_val = float(df[col].min())
-        max_val = float(df[col].max())
-        values = st.sidebar.slider(
-            f"Filter {col}",
-            min_val, max_val, (min_val, max_val)
-        )
-        df = df[(df[col] >= values[0]) & (df[col] <= values[1])]
-    for col in col_types['categorical'][:3]:
-        options = df[col].unique().tolist()
-        selected = st.sidebar.multiselect(
-            f"Filter {col}",
-            options,
-            default=options
-        )
-        if selected:
-            df = df[df[col].isin(selected)]
-    
+        # Ensure dates are not NaT
+        if pd.isnull(min_date) or pd.isnull(max_date):
+            st.warning(f"No valid dates found in '{selected_date_col}' column.")
+        else:
+            date_range = st.sidebar.date_input(
+                f"Select date range for {selected_date_col}",
+                value=(min_date, max_date),
+                min_value=min_date,
+                max_value=max_date
+            )
+
+            if isinstance(date_range, tuple) and len(date_range) == 2:
+                start_date = pd.to_datetime(date_range[0])
+                end_date = pd.to_datetime(date_range[1])
+                df = df[(df[selected_date_col] >= start_date) & (df[selected_date_col] <= end_date)]
+
+    # Filter by numeric columns
+    for col in col_types.get('numeric', [])[:3]:
+        if col in df.columns and pd.api.types.is_numeric_dtype(df[col]):
+            min_val = float(df[col].min())
+            max_val = float(df[col].max())
+            if pd.notnull(min_val) and pd.notnull(max_val):
+                values = st.sidebar.slider(
+                    f"Filter {col}",
+                    min_val, max_val, (min_val, max_val)
+                )
+                df = df[(df[col] >= values[0]) & (df[col] <= values[1])]
+
+    # Filter by categorical columns
+    for col in col_types.get('categorical', [])[:3]:
+        if col in df.columns:
+            options = df[col].dropna().unique().tolist()
+            if options:
+                selected = st.sidebar.multiselect(
+                    f"Filter {col}",
+                    options,
+                    default=options
+                )
+                df = df[df[col].isin(selected)]
+
     return df
 
 def show_data_preview(df):
