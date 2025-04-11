@@ -129,6 +129,28 @@ def style_metric_cards():
         unsafe_allow_html=True
     )
 
+def style_metric_cards():
+    st.markdown("""
+        <style>
+        div[data-testid="metric-container"] {
+            border: 1px solid #d3d3d3;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease-in-out;
+        }
+        div[data-testid="metric-container"]:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        div[data-testid="metric-container"] > label {
+            font-size: 14px;
+            color: #333;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
 def show_kpi_cards(kpis, columns_per_row=3):
     """Display dynamic KPI cards in a matrix layout"""
     for i in range(0, len(kpis), columns_per_row):
