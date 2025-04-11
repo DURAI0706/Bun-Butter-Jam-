@@ -816,10 +816,7 @@ def show_correlation_visualizations(df, col_types):
 def main():
     col1, col2 = st.columns([1, 4])
     with col1:
-        st.image(
-            "https://64.media.tumblr.com/b6edcc1a7e0d71be3acb26a2ae250290/tumblr_ne4ix7jkzj1tdidvbo1_r2_500.gif",
-            width=100
-        )
+        st.image("https://64.media.tumblr.com/b6edcc1a7e0d71be3acb26a2ae250290/tumblr_ne4ix7jkzj1tdidvbo1_r2_500.gif")
     with col2:
         st.title("Detailed Exploratory Data Analysis")
     
