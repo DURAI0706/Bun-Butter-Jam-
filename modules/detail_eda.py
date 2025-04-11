@@ -603,9 +603,12 @@ def show_correlation_visualizations(df, col_types):
                 if cat_cols:
                     group_col = st.selectbox("Group by", ['None'] + cat_cols)
                 
-                st.markdown("### Statistics")
+                st.markdown("<h3 style='text-align: center;'>Statistics</h3>", unsafe_allow_html=True)
                 stats = df[dist_col].describe()
-                st.dataframe(pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#c76b7a'))
+                st.dataframe(
+                    pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#c76b7a'),
+                    use_container_width=True  # Makes the dataframe take the full width available
+                )
             
             # Second row - Distribution chart
             dist_row2 = st.container()
