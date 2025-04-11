@@ -595,44 +595,44 @@ def show_correlation_visualizations(df, col_types):
         cat_cols = col_types['categorical'] if 'categorical' in col_types else df.select_dtypes(include=['object', 'category']).columns.tolist()
         
         if num_cols:
-            dist_col1, dist_col2 = st.columns([1, 3])
+            # Row 1 - Controls
+            dist_col = st.selectbox("Select metric", num_cols)
+            group_col = None
+            if cat_cols:
+                group_col = st.selectbox("Group by", ['None'] + cat_cols)
             
-            with dist_col1:
-                dist_col = st.selectbox("Select metric", num_cols)
-                if cat_cols:
-                    group_col = st.selectbox("Group by", ['None'] + cat_cols)
-                
-                st.markdown("### Statistics")
-                stats = df[dist_col].describe()
-                st.dataframe(pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#fffd75'))
+            # Row 2 - Stats
+            st.markdown("### Statistics")
+            stats = df[dist_col].describe()
+            st.dataframe(pd.DataFrame(stats).T.style.highlight_max(axis=1, color='#fffd75'))
             
-            with dist_col2:
-                if cat_cols and group_col != 'None':
-                    fig = px.box(df, x=group_col, y=dist_col, color=group_col,
-                                title=f"Distribution of {dist_col} by {group_col}")
-                else:
-                    fig = px.histogram(df, x=dist_col, 
-                                      title=f"Distribution of {dist_col}")
-                st.plotly_chart(fig, use_container_width=True, key="distribution_chart")
+            # Row 3 - Distribution Chart
+            if cat_cols and group_col != 'None':
+                fig = px.box(df, x=group_col, y=dist_col, color=group_col,
+                            title=f"Distribution of {dist_col} by {group_col}")
+            else:
+                fig = px.histogram(df, x=dist_col, 
+                                title=f"Distribution of {dist_col}")
+            st.plotly_chart(fig, use_container_width=True, key="distribution_chart")
         else:
             st.warning("No numeric columns found for distribution analysis")
-            
+        
+        # Composition Analysis
         if cat_cols and sales_metric:
             st.subheader("🍰 Composition Analysis")
-            comp_col1, comp_col2 = st.columns(2)
-            
-            with comp_col1:
-                comp_col = st.selectbox("Select category", cat_cols, key="comp_col_select")
-                comp_data = df.groupby(comp_col)[sales_metric].sum().reset_index()
-                fig1 = px.pie(comp_data, values=sales_metric, names=comp_col,
-                             title=f"{sales_metric} by {comp_col}")
-                st.plotly_chart(fig1, use_container_width=True, key="composition_pie_chart")
-            
-            with comp_col2:
-                if len(cat_cols) > 1:
-                    fig2 = px.treemap(df, path=cat_cols[:2], values=sales_metric,
-                                     title=f"Hierarchical View of {sales_metric}")
-                    st.plotly_chart(fig2, use_container_width=True, key="composition_treemap_chart")
+
+            # Row 1 - Pie Chart
+            comp_col = st.selectbox("Select category", cat_cols, key="comp_col_select")
+            comp_data = df.groupby(comp_col)[sales_metric].sum().reset_index()
+            fig1 = px.pie(comp_data, values=sales_metric, names=comp_col,
+                        title=f"{sales_metric} by {comp_col}")
+            st.plotly_chart(fig1, use_container_width=True, key="composition_pie_chart")
+
+            # Row 2 - Treemap Chart (only if at least 2 categorical columns)
+            if len(cat_cols) > 1:
+                fig2 = px.treemap(df, path=cat_cols[:2], values=sales_metric,
+                                title=f"Hierarchical View of {sales_metric}")
+                st.plotly_chart(fig2, use_container_width=True, key="composition_treemap_chart")
     
     # Tab 4: Relationships
     with main_tabs[3]:
