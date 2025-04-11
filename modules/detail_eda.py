@@ -278,6 +278,75 @@ def show_correlations(df, col_types):
         """)
         st.warning("Note: Correlation ≠ Causation. High correlation may indicate a relationship but doesn't prove one causes the other.")
 
+def show_distributions(df, col_types):
+    """Show distributions for different column types"""
+    st.subheader("Data Distributions")
+    if col_types['numeric']:
+        st.write("#### Numeric Columns")
+        num_col = st.selectbox("Select numeric column", col_types['numeric'])
+        col1, col2 = st.columns(2)
+        with col1:
+            fig = px.histogram(df, x=num_col, title=f"Distribution of {num_col}")
+            st.plotly_chart(fig, use_container_width=True)
+        with col2:
+            fig = px.box(df, y=num_col, title=f"Box Plot of {num_col}")
+            st.plotly_chart(fig, use_container_width=True)
+            q1 = df[num_col].quantile(0.25)
+            q3 = df[num_col].quantile(0.75)
+            iqr = q3 - q1
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
+            outliers = df[(df[num_col] < lower_bound) | (df[num_col] > upper_bound)]
+            st.info(f"Detected {len(outliers)} outliers using IQR method")
+    if col_types['categorical']:
+        st.write("#### Categorical Columns")
+        cat_col = st.selectbox("Select categorical column", col_types['categorical'])
+        value_counts = df[cat_col].value_counts().reset_index()
+        value_counts.columns = ['Value', 'Count']
+        col1, col2 = st.columns(2)
+        with col1:
+            fig = px.bar(value_counts, x='Value', y='Count', 
+                        title=f"Distribution of {cat_col}")
+            st.plotly_chart(fig, use_container_width=True)
+        with col2:
+            fig = px.pie(value_counts, values='Count', names='Value',
+                        title=f"Proportion of {cat_col}")
+            st.plotly_chart(fig, use_container_width=True)
+
+def show_time_series(df, col_types):
+    """Show time series analysis with updated resample codes"""
+    if not col_types['datetime']:
+        return
+    
+    st.subheader("Time Series Analysis")
+    date_col = st.selectbox("Select date column", col_types['datetime'], key='ts_date_col')
+    
+    if not col_types['numeric']:
+        st.warning("No numeric columns for time series visualization")
+        return
+    
+    value_col = st.selectbox("Select value column", col_types['numeric'], key='ts_value_col')
+    resample_options = {
+        'Daily': 'D',
+        'Weekly': 'W',
+        'Monthly': 'ME',
+        'Quarterly': 'QE',
+        'Yearly': 'YE'
+    }
+    selected_freq = st.selectbox(
+        "Resampling frequency", 
+        list(resample_options.keys()),
+        key='ts_resample_freq'
+    )
+    ts_df = df.set_index(date_col)[value_col]\
+             .resample(resample_options[selected_freq])\
+             .mean()\
+             .reset_index()
+    
+    fig = px.line(ts_df, x=date_col, y=value_col, 
+                 title=f"{value_col} over Time")
+    st.plotly_chart(fig, use_container_width=True)
+
 def safe_display_dataframe(df, height=None):
     """Helper function to safely display dataframes with consistent types"""
     display_df = df.copy()
@@ -315,6 +384,7 @@ def create_filters(df, col_types):
                 end_date = pd.to_datetime(date_range[1])
                 df = df[(df[selected_date_col] >= start_date) & (df[selected_date_col] <= end_date)]
 
+    # Filter by numeric columns
     for col in col_types.get('numeric', [])[:3]:
         if col in df.columns and pd.api.types.is_numeric_dtype(df[col]):
             min_val = float(df[col].min())
@@ -326,6 +396,7 @@ def create_filters(df, col_types):
                 )
                 df = df[(df[col] >= values[0]) & (df[col] <= values[1])]
 
+    # Filter by categorical columns
     for col in col_types.get('categorical', [])[:3]:
         if col in df.columns:
             options = df[col].dropna().unique().tolist()
@@ -407,6 +478,7 @@ def show_data_preview(df):
         st.write(f"**Memory Usage:** {df.memory_usage(deep=True).sum() / (1024 ** 2):.2f} MB")
 
 def show_correlation_visualizations(df, col_types):
+    # Helper function to identify date columns
     def get_date_column(df):
         date_cols = [col for col in df.columns if 'date' in col.lower() or 'time' in col.lower()]
         if date_cols:
@@ -415,12 +487,15 @@ def show_correlation_visualizations(df, col_types):
             return col
         return None
     
+    # Dashboard header
     st.markdown("## 📊 Sales Analytics Dashboard")
     
+    # Identify key metrics columns
     amount_cols = [col for col in df.columns if 'amount' in col.lower() or 'total' in col.lower()]
     quantity_cols = [col for col in df.columns if 'quantity' in col.lower() or 'qty' in col.lower()]
     sales_metric = amount_cols[0] if amount_cols else (quantity_cols[0] if quantity_cols else None)
     
+    # Top-level metrics
     if sales_metric:
         metrics_container = st.container()
         with metrics_container:
@@ -432,9 +507,11 @@ def show_correlation_visualizations(df, col_types):
             with col3:
                 st.metric("Transactions", f"{len(df):,}")
     
+    # Main dashboard layout
     tab_names = ["Performance", "Trends", "Distributions", "Relationships", "Advanced"]
     main_tabs = st.tabs(tab_names)
     
+    # Tab 1: Performance Analysis
     with main_tabs[0]:
         if sales_metric:
             st.subheader("🏆 Top Performers")
@@ -455,7 +532,8 @@ def show_correlation_visualizations(df, col_types):
                         with col2:
                             st.markdown("### Key Insight")
                             st.write(f"**{top_items.iloc[0][col]}** leads with **{top_items.iloc[0][sales_metric]:,.2f}** in {sales_metric}.")
-                
+                            
+                            # Show proportion of top performer
                             total = df[sales_metric].sum()
                             proportion = top_items.iloc[0][sales_metric] / total
                             st.progress(proportion)
@@ -463,6 +541,7 @@ def show_correlation_visualizations(df, col_types):
         else:
             st.warning("No sales metric columns found for performance analysis")
                 
+    # Tab 2: Trend Analysis
     with main_tabs[1]:
         date_col = get_date_column(df)
         if date_col and sales_metric:
@@ -471,6 +550,7 @@ def show_correlation_visualizations(df, col_types):
             trend_col1, trend_col2 = st.columns([1, 3])
             
             with trend_col1:
+                # Controls for trend analysis
                 metric_options = []
                 if sales_metric: metric_options.append(sales_metric)
                 if quantity_cols: metric_options.extend(quantity_cols[:2])
@@ -485,6 +565,7 @@ def show_correlation_visualizations(df, col_types):
                 st.markdown("### Trend Insight")
                 df[date_col] = pd.to_datetime(df[date_col])
                 
+                # Calculate trend data based on time grouping
                 if time_groups == 'Daily':
                     trend_data = df.groupby(df[date_col].dt.date)[selected_metric].sum().reset_index()
                     x_col = date_col
@@ -518,6 +599,7 @@ def show_correlation_visualizations(df, col_types):
         else:
             st.warning("Date column or sales metric not found for trend analysis")
     
+    # Tab 3: Distributions
     with main_tabs[2]:
         st.subheader("📊 Distribution Analysis")
         
@@ -564,6 +646,7 @@ def show_correlation_visualizations(df, col_types):
                                      title=f"Hierarchical View of {sales_metric}")
                     st.plotly_chart(fig2, use_container_width=True, key="composition_treemap_chart")
     
+    # Tab 4: Relationships
     with main_tabs[3]:
         if len(num_cols) >= 2:
             st.subheader("🔗 Correlation Analysis")
@@ -577,7 +660,8 @@ def show_correlation_visualizations(df, col_types):
                 if cat_cols:
                     color_col = st.selectbox("Color by", ['None'] + cat_cols)
                     color_col = None if color_col == 'None' else color_col
-
+                
+                # Calculate correlation
                 corr = df[[x_col, y_col]].corr().iloc[0,1]
                 st.markdown("### Correlation")
                 st.metric("Correlation Coefficient", f"{corr:.2f}")
@@ -599,6 +683,7 @@ def show_correlation_visualizations(df, col_types):
         else:
             st.warning("Need at least 2 numeric columns for relationship analysis")
     
+    # Tab 5: Advanced Analytics
     with main_tabs[4]:
         st.subheader("🔍 Advanced Analytics")
         
@@ -614,6 +699,7 @@ def show_correlation_visualizations(df, col_types):
             adv_tabs = st.tabs(adv_tab_names)
             tab_idx = 0
             
+            # Correlation Matrix
             if "Correlation Matrix" in adv_tab_names:
                 with adv_tabs[tab_idx]:
                     selected_num_cols = st.multiselect("Select metrics for correlation", num_cols, num_cols[:5])
@@ -628,6 +714,7 @@ def show_correlation_visualizations(df, col_types):
                         st.plotly_chart(fig, use_container_width=True, key="correlation_matrix_chart")
                 tab_idx += 1
             
+            # Normalized Metrics
             if "Normalized Metrics" in adv_tab_names:
                 with adv_tabs[tab_idx]:
                     selected_metrics = st.multiselect("Select metrics to compare", num_cols, num_cols[:3])
@@ -637,6 +724,7 @@ def show_correlation_visualizations(df, col_types):
                         try:
                             if date_col and date_col in df.columns:
                                 norm_df[date_col] = df[date_col]
+                                # Optional: convert to datetime if it looks like a date
                                 if "date" in date_col.lower() or "time" in date_col.lower():
                                     norm_df[date_col] = pd.to_datetime(norm_df[date_col], errors="coerce")
 
@@ -663,10 +751,11 @@ def show_correlation_visualizations(df, col_types):
 
                         except Exception as e:
                             st.error(f"Error generating normalized metric comparison plot: {e}")
-                            st.dataframe(norm_df.head())
+                            st.dataframe(norm_df.head())  # Help with debugging
 
                 tab_idx += 1
 
+            # Time Decomposition
             if "Time Decomposition" in adv_tab_names:
                 with adv_tabs[tab_idx]:
                     ts_col = st.selectbox("Select metric to decompose", num_cols, key="ts_col_select") 
@@ -688,6 +777,7 @@ def show_correlation_visualizations(df, col_types):
                         st.warning(f"Couldn't decompose: {str(e)}")
                 tab_idx += 1
             
+            # Composition Over Time
             if "Composition Over Time" in adv_tab_names:
                 with adv_tabs[tab_idx]:
                     comp_col = st.selectbox("Select category", cat_cols, key="time_comp_col_select")
@@ -697,6 +787,7 @@ def show_correlation_visualizations(df, col_types):
                     st.plotly_chart(fig, use_container_width=True, key="composition_time_chart")
                 tab_idx += 1
             
+            # 3D Visualization
             if "3D Visualization" in adv_tab_names:
                 with adv_tabs[tab_idx]:
                     col3d1, col3d2 = st.columns([1, 3])
@@ -715,6 +806,7 @@ def show_correlation_visualizations(df, col_types):
                         st.plotly_chart(fig, use_container_width=True, key="3d_visualization_chart")
                 tab_idx += 1
             
+            # Sunburst Chart
             if "Sunburst Chart" in adv_tab_names:
                 with adv_tabs[tab_idx]:
                     path_cols = st.multiselect("Select hierarchy path", cat_cols, cat_cols[:2])
@@ -730,11 +822,14 @@ def main():
         "Upload CSV or Excel file (optional, defaults to Coronation Bakery Dataset)",
         type=["csv", "xlsx", "xls"]
     )
+
+    # Load either the uploaded file or the default dataset
     df = load_data(uploaded_file)
     if df is None:
         st.error("❌ Failed to load dataset.")
         return
 
+    # Set dataset name
     if uploaded_file:
         dataset_name = uploaded_file.name.split('.')[0].replace('_', ' ').title()
         st.sidebar.success(f"✅ Loaded file: {uploaded_file.name}")
@@ -742,6 +837,9 @@ def main():
         dataset_name = "Coronation Bakery Dataset"
         st.sidebar.info("📂 Using default: Coronation Bakery Dataset.csv")
 
+    # Continue with EDA
+    # Continue with EDA
+    # REMOVE this line: df = load_data(df)
     col_types = detect_column_types(df)
     df = create_filters(df, col_types)
 
@@ -749,16 +847,20 @@ def main():
     st.header(f"Dataset Overview: {dataset_name}")
 
     show_kpi_cards(generate_kpis(df, col_types))
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "📋 Preview", "🔍 Distributions", "📊 Correlations", "🧩 Missing Values"
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "📋 Preview", "🔍 Distributions", "📈 Time Series", 
+        "🧩 Missing Values", "📊 Correlations", "✨ Smart Visuals"
     ])
 
     with tab1:
         show_data_preview(df)
     with tab2:
-        show_correlation_visualizations(df, col_types)
+        show_distributions(df, col_types)
     with tab3:
-        show_correlations(df, col_types)
+        show_time_series(df, col_types)
     with tab4:
         show_missing_values(df)
-
+    with tab5:
+        show_correlations(df, col_types)
+    with tab6:
+        show_correlation_visualizations(df, col_types)
