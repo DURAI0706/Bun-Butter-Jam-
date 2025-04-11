@@ -794,7 +794,6 @@ def show_correlation_visualizations(df, col_types):
         
         adv_tab_names = []
         if len(num_cols) >= 2: adv_tab_names.append("Correlation Matrix")
-        if len(num_cols) >= 1: adv_tab_names.append("Normalized Metrics")
         if date_col and len(num_cols) >= 1: adv_tab_names.append("Time Decomposition") 
         if len(cat_cols) >= 1 and date_col: adv_tab_names.append("Composition Over Time")
         if len(num_cols) >= 3: adv_tab_names.append("3D Visualization")
@@ -843,84 +842,6 @@ def show_correlation_visualizations(df, col_types):
                                 """.format(max_corr, col1, col2), unsafe_allow_html=True)
                 tab_idx += 1
             
-            # Normalized Metrics
-            if "Normalized Metrics" in adv_tab_names:
-                with adv_tabs[tab_idx]:
-                    # Create a container for normalized metrics
-                    norm_container = st.container()
-                    
-                    with norm_container:
-                        selected_metrics = st.multiselect("Select metrics to compare", num_cols, num_cols[:3])
-                        if len(selected_metrics) >= 1:
-                            norm_df = df[selected_metrics].apply(lambda x: (x - x.min()) / (x.max() - x.min()))
-
-                            try:
-                                if date_col and date_col in df.columns:
-                                    norm_df[date_col] = df[date_col]
-                                    # Optional: convert to datetime if it looks like a date
-                                    if "date" in date_col.lower() or "time" in date_col.lower():
-                                        norm_df[date_col] = pd.to_datetime(norm_df[date_col], errors="coerce")
-
-                                    melt_df = norm_df.melt(id_vars=date_col, var_name='Metric', value_name='Value')
-                                    fig = px.line(
-                                        melt_df,
-                                        x=date_col,
-                                        y='Value',
-                                        color='Metric',
-                                        title="Normalized Metric Comparison",
-                                        line_shape="linear"
-                                    )
-                                else:
-                                    melt_df = norm_df.reset_index().melt(id_vars='index', var_name='Metric', value_name='Value')
-                                    fig = px.line(
-                                        melt_df,
-                                        x='index',
-                                        y='Value',
-                                        color='Metric',
-                                        title="Normalized Metric Comparison"
-                                    )
-
-                                # Container for the chart
-                                chart_container = st.container()
-                                with chart_container:
-                                    st.plotly_chart(fig, use_container_width=True)
-                                
-                                # Add styled metrics for min/max rates of change
-                                if len(selected_metrics) >= 1 and date_col:
-                                    st.markdown("### Rate of Change")
-                                    col1, col2 = st.columns(2)
-                                    
-                                    for i, metric in enumerate(selected_metrics[:2]):  # Show stats for up to 2 metrics
-                                        with col1 if i == 0 else col2:
-                                            # Calculate rate of change
-                                            metric_series = norm_df[metric].dropna()
-                                            if len(metric_series) > 1:
-                                                rate_of_change = metric_series.pct_change().dropna()
-                                                max_increase = rate_of_change.max()
-                                                max_decrease = rate_of_change.min()
-                                                
-                                                st.markdown("""
-                                                <div class="metric-container">
-                                                    <p class="metric-title">{}</p>
-                                                    <p class="metric-value">+{:.1%}</p>
-                                                    <p>Max Increase</p>
-                                                </div>
-                                                """.format(metric, max_increase), unsafe_allow_html=True)
-                                                
-                                                st.markdown("""
-                                                <div class="metric-container">
-                                                    <p class="metric-title">{}</p>
-                                                    <p class="metric-value">{:.1%}</p>
-                                                    <p>Max Decrease</p>
-                                                </div>
-                                                """.format(metric, max_decrease), unsafe_allow_html=True)
-
-                            except Exception as e:
-                                st.error(f"Error generating normalized metric comparison plot: {e}")
-                                st.dataframe(norm_df.head())  # Help with debugging
-
-                tab_idx += 1
-
             # Time Decomposition
             if "Time Decomposition" in adv_tab_names:
                 with adv_tabs[tab_idx]:
