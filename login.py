@@ -161,11 +161,11 @@ def show_login_page():
     }
 
     .centered-login {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        height: 85vh;
     }
 
     /* Glass-style login button */
