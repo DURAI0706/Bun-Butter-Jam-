@@ -847,7 +847,7 @@ def main():
     st.header(f"Dataset Overview: {dataset_name}")
 
     show_kpi_cards(generate_kpis(df, col_types))
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    tab1, tab2, tab3, tab4 = st.tabs([
         "📋 Preview", "✨ Smart Visuals", "📊 Correlations", 
         "🧩 Missing Values", 
     ])
