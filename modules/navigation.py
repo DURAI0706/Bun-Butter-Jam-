@@ -34,7 +34,7 @@ def main():
     
     # Route to selected module
     if selected == "Home":
-        home.load_module()
+        home.main()
     elif selected == "Detailed EDA":
         detail_eda.main()
     elif selected == "ML Algorithms":
