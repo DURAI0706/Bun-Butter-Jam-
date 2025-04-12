@@ -1,46 +1,3 @@
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.linear_model import Lasso
-from sklearn.svm import SVR
-from sklearn.neighbors import KNeighborsRegressor
-from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
-from prophet import Prophet  # Install with: pip install prophet
-
-model_configs = {
-    "Random Forest": {
-        "model": RandomForestRegressor(random_state=42),
-        "params": {
-            "n_estimators": [50, 100, 200],
-            "max_depth": [None, 10, 20]
-        }
-    },
-    "XGBoost": {
-        "model": GradientBoostingRegressor(random_state=42),
-        "params": {
-            "n_estimators": [50, 100],
-            "learning_rate": [0.01, 0.1]
-        }
-    },
-    "Lasso": {
-        "model": Lasso(random_state=42),
-        "params": {
-            "alpha": [0.01, 0.1, 1]
-        }
-    },
-    "SVR": {
-        "model": SVR(),
-        "params": {
-            "C": [0.1, 1, 10],
-            "kernel": ['linear', 'rbf']
-        }
-    },
-    "KNN": {
-        "model": KNeighborsRegressor(),
-        "params": {
-            "n_neighbors": [3, 5, 10]
-        }
-    },
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -52,6 +9,10 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression, Lasso
 from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from prophet import Prophet  
 from sklearn.feature_selection import SelectKBest, f_regression, mutual_info_regression, f_classif
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, explained_variance_score, max_error
 
@@ -129,7 +90,8 @@ def preprocess_data(df, target_col):
 @st.cache_data
 def train_models_with_features(_X, _y, test_size, selected_models):
     """Train models using only the selected features with caching"""
-    models_config = {
+    models_config = 
+    {
         "Random Forest": {
             "model": RandomForestRegressor(random_state=42),
             "params": {"n_estimators": [50, 100, 200], "max_depth": [None, 10, 20]}
