@@ -216,7 +216,8 @@ def display_metrics(df):
         {"title": "Total Revenue", "value": f"₹{total_revenue:,.2f}"},
         {"title": "Total Sales Count", "value": f"{total_sales:,}"},
         {"title": "Average Sales/Day", "value": f"{avg_sales:,.1f}"},
-        # Removed "Selected Seller" and "Selected Product" metrics
+        {"title": "Selected Seller", "value": selected_seller},
+        {"title": "Selected Product", "value": selected_product}
     ]
     for i, col in enumerate(row):
         tile = col.container(height=120)
