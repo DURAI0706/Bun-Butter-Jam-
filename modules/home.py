@@ -213,7 +213,7 @@ def display_metrics(df):
     </style>
     """, unsafe_allow_html=True)
     
-    row = st.columns(3)  # Changed from 5 to 3 since we're removing two metrics
+    row = st.columns(5)  # Changed from 5 to 3 since we're removing two metrics
     metrics = [
         {"title": "Total Revenue", "value": f"₹{total_revenue:,.2f}"},
         {"title": "Total Sales Count", "value": f"{total_sales:,}"},
