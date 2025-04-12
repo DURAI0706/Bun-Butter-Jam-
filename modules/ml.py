@@ -764,40 +764,33 @@ def main():
         
         with model_tabs[0]:
             create_model_comparison_plots(results, y_test)
-        
-    # In your train_models_with_features function
-    # Add this near the end to ensure we have at least one successful model
-    if not results:
-        st.error("No models were successfully trained. Please try different features or models.")
-        return {}, {}, X_test, y_test
-
-    # In your model tabs section, modify the code to check if results exist
-    with model_tabs[1]:
-        st.subheader("Actual vs Predicted")
-        
-        if results:  # Check if results dictionary is not empty
-            # Create dropdown to select model
-            selected_model = st.selectbox(
-                "Select model to visualize:", 
-                options=list(results.keys()),
-                index=st.session_state.model_comparison_index,
-                key="model_selector"
-            )
             
-            # Update session state index when selection changes
-            current_index = list(results.keys()).index(selected_model)
-            if current_index != st.session_state.model_comparison_index:
-                st.session_state.model_comparison_index = current_index
+        with model_tabs[1]:
+            st.subheader("Actual vs Predicted")
+            
+            if results:  # Check if results dictionary is not empty
+                # Create dropdown to select model
+                selected_model = st.selectbox(
+                    "Select model to visualize:", 
+                    options=list(results.keys()),
+                    index=st.session_state.model_comparison_index,
+                    key="model_selector"
+                )
                 
-            create_model_prediction_plots(
-                results, 
-                y_test, 
-                selected_model, 
-                target_variable
-            )
-        else:
-            st.warning("No models were successfully trained. Please try different features or models.")
-        
+                # Update session state index when selection changes
+                current_index = list(results.keys()).index(selected_model)
+                if current_index != st.session_state.model_comparison_index:
+                    st.session_state.model_comparison_index = current_index
+                    
+                create_model_prediction_plots(
+                    results, 
+                    y_test, 
+                    selected_model, 
+                    target_variable
+                )
+            else:
+                st.warning("No models were successfully trained. Please try different features or models.")
+            
         with model_tabs[2]:
             st.subheader("Feature Analysis")
             
@@ -922,6 +915,13 @@ def main():
                     value=f"{corr:.3f}",
                     help="Pearson correlation coefficient (-1 to 1)"
                 )
+
+
+# This code was causing the error - removed it from here
+# It was checking 'results' before it was defined
+# if not results:
+#    st.error("No models were successfully trained. Please try different features or models.")
+#    return {}, {}, X_test, y_test
 
 if __name__ == "__main__":
     main()
