@@ -159,7 +159,19 @@ def show_login_page():
         flex-direction: column;
         height: 85vh;
     }
-
+    
+    /* Glass container box */
+    .glass-container {
+        padding: 40px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        display: inline-block;
+    }
+    
     /* Glass-style login button */
     .glass-button {
         display: inline-flex;
@@ -211,12 +223,13 @@ def show_login_page():
     if auth_url:
         st.markdown(f"""
         <div class="centered-login">
-            <h2>🔐 Login to Coronation Bakery Dashboard</h2><br>
-            <a href="{auth_url}" class="glass-button">
-                <img src="https://cdn-icons-png.flaticon.com/256/2991/2991148.png" width="20">
-                LOGIN
-                <span style="font-size: 18px;"></span>
-            </a>
+            <div class="glass-container">
+                <h2>🔐 Login to Coronation Bakery Dashboard</h2>
+                <a href="{auth_url}" class="glass-button">
+                    <img src="https://cdn-icons-png.flaticon.com/256/2991/2991148.png" width="20">
+                    LOGIN
+                </a>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     else:
