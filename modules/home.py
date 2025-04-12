@@ -378,40 +378,30 @@ def display_charts(df):
                 st.info("No data available for the selected filters.")
 
 def main():
-   
-    # Sidebar for file upload
-    uploaded_file = st.sidebar.file_uploader(
-        "Upload CSV or Excel file (optional, defaults to Coronation Bakery Dataset)",
-        type=["csv", "xlsx", "xls"]
-    )
-
-    # Load either the uploaded file or the default dataset
-    df = load_data(uploaded_file)
+    # Always use default dataset
+    df = load_data(None)
     if df is None:
         st.error("❌ Failed to load dataset.")
         return
 
     # Set dataset name
-    if uploaded_file:
-        dataset_name = uploaded_file.name.split('.')[0].replace('_', ' ').title()
-        st.sidebar.success(f"✅ Loaded file: {uploaded_file.name}")
-    else:
-        dataset_name = "Coronation Bakery Dataset"
-        st.sidebar.info("📂 Using default: Coronation Bakery Dataset.csv")
-    
+    dataset_name = "Coronation Bakery Dataset"
+    st.sidebar.info("📂 Using default: Coronation Bakery Dataset.csv")
+
     # Display main dashboard
     st.markdown(f"<h1 style='text-align: center;'>{dataset_name} Sales Dashboard</h1>", unsafe_allow_html=True)
-    
+
     # Initialize sellers and products list if not already in session state
     if 'sales_data' not in st.session_state:
         st.session_state['sales_data'] = df
-    
+
     # Display main filters, metrics and charts
     create_filters(df)
     display_metrics(df)
     display_charts(df)
-    
+
     st.sidebar.success(f"✅ {len(df)} rows × {len(df.columns)} columns")
+
 
 if __name__ == "__main__":
     main()
