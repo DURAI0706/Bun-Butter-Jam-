@@ -184,6 +184,8 @@ def display_metrics(df):
     total_sales = df['Quantity'].sum()
     days_count = len(df['Date'].dt.date.unique())
     avg_sales = total_sales / days_count if days_count > 0 else 0
+    selected_seller = st.session_state['selected_seller']
+    selected_product = st.session_state['selected_product']
     
     st.markdown("""
     <style>
