@@ -948,8 +948,6 @@ def main():
                     value=f"{corr:.3f}",
                     help="Pearson correlation coefficient (-1 to 1)"
                 )
-    else:
-        st.info("ℹ️ Configure your models and click 'Run Models' to see results")
 
 if __name__ == "__main__":
     main()
