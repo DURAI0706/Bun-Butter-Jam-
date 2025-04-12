@@ -9,3 +9,4 @@ scikit-learn==1.4.0
 statsmodels==0.14.1
 streamlit-extras==0.3.0
 streamlit-option-menu==0.3.2
+prophet==1.1.5
