@@ -215,7 +215,7 @@ def show_login_page():
             <a href="{auth_url}" class="glass-button">
                 <img src="https://cdn-icons-png.flaticon.com/256/2991/2991148.png" width="20">
                 LOGIN
-                <span style="font-size: 18px;">🔒</span>
+                <span style="font-size: 18px;"></span>
             </a>
         </div>
         """, unsafe_allow_html=True)
