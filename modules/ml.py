@@ -90,8 +90,7 @@ def preprocess_data(df, target_col):
 @st.cache_data
 def train_models_with_features(_X, _y, test_size, selected_models):
     """Train models using only the selected features with caching"""
-    models_config = 
-    {
+    models_config = {
         "Random Forest": {
             "model": RandomForestRegressor(random_state=42),
             "params": {"n_estimators": [50, 100, 200], "max_depth": [None, 10, 20]}
@@ -111,7 +110,7 @@ def train_models_with_features(_X, _y, test_size, selected_models):
         "KNN": {
             "model": KNeighborsRegressor(),
             "params": {"n_neighbors": [3, 5, 10]}
-        }
+        },
         "ARIMA": {
             "model": ARIMA(),
             "params": {
