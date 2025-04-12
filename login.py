@@ -177,23 +177,27 @@ def show_login_page():
         display: inline-flex;
         align-items: center;
         gap: 10px;
-        padding: 14px 30px;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 16px;
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
+        padding: 12px 24px;
+        margin-top: 20px;
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         color: white;
-        font-size: 18px;
+        font-size: 16px;
         font-weight: bold;
         text-decoration: none;
-        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
         transition: all 0.3s ease;
     }
 
     .glass-button:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.3);
         transform: scale(1.05);
+    }
+
+    .glass-button img {
+        vertical-align: middle;
     }
     </style>
     """, unsafe_allow_html=True)
