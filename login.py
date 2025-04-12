@@ -244,9 +244,9 @@ def show_login_page():
                     </div>
                 </div>
             </div>
+            """, unsafe_allow_html=True)
     else:
         st.error("🚨 Failed to create Google login link.")
-
     return False
 
 
