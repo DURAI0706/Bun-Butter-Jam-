@@ -121,11 +121,6 @@ def train_models_with_features(_X, _y, test_size, selected_models):
             "params": {"order": [(1, 1, 0), (2, 1, 1), (3, 1, 2)]},
             "type": "statsmodels"
         },
-        "SARIMA": {
-            "model": None,
-            "params": {"order": [(1, 1, 1)], "seasonal_order": [(1, 1, 1, 12)]},
-            "type": "statsmodels"
-        },
         "Holt-Winters": {
             "model": None,
             "params": {"trend": ['add', 'mul'], "seasonal": ['add', 'mul'], "seasonal_periods": [12]},
@@ -214,27 +209,6 @@ def train_models_with_features(_X, _y, test_size, selected_models):
                         except Exception as e:
                             st.warning(f"ARIMA {order} failed: {str(e)}")
                             continue
-                            
-                elif name == "SARIMA":
-                    for order in config["params"]["order"]:
-                        for seasonal_order in config["params"]["seasonal_order"]:
-                            try:
-                                # Create and fit SARIMA model
-                                model = SARIMAX(train_series, order=order, seasonal_order=seasonal_order)
-                                fitted = model.fit(disp=False)
-                                
-                                # Forecast test data points
-                                preds = fitted.forecast(steps=len(y_test))
-                                mse = mean_squared_error(y_test, preds)
-                                
-                                if mse < best_mse:
-                                    best_mse = mse
-                                    best_model = fitted
-                                    best_preds = preds
-                                    best_params = {"order": order, "seasonal_order": seasonal_order}
-                            except Exception as e:
-                                st.warning(f"SARIMA {order}, {seasonal_order} failed: {str(e)}")
-                                continue
                                 
                 elif name == "Holt-Winters":
                     for trend in config["params"]["trend"]:
@@ -590,7 +564,7 @@ def main():
         
         # Step 4: Model selection
         st.subheader("4. Select Models")
-        model_options = ["Random Forest", "XGBoost", "Lasso", "SVR", "KNN","ARIMA","SARIMA","Holt-Winters","Prophet"]
+        model_options = ["Random Forest", "XGBoost", "Lasso", "SVR", "KNN","ARIMA","Holt-Winters","Prophet"]
         st.session_state.selected_models = st.multiselect(
             "Choose models to run:",
             options=model_options,
