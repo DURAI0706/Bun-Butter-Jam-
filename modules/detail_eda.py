@@ -1032,12 +1032,7 @@ def show_correlation_visualizations(df, col_types):
                                 grouped = df.groupby(path_cols)[sales_metric].sum().reset_index()
 
 def main():
-    col1, col2 = st.columns([1, 15])
-    with col1:
-        st.image("https://media0.giphy.com/media/XgBEYpEW5MJ2qWhYUT/giphy.gif")
-    with col2:
-        st.title("Detailed Exploratory Data Analysis")
-    
+    st.title("📊 Detailed Exploratory Data Analysis")
     uploaded_file = st.sidebar.file_uploader(
         "Upload CSV or Excel file (optional, defaults to Coronation Bakery Dataset)",
         type=["csv", "xlsx", "xls"]
