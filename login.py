@@ -199,6 +199,13 @@ def show_login_page():
     .glass-button img {
         vertical-align: middle;
     }
+
+    .button-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+    
     </style>
     """, unsafe_allow_html=True)
 
