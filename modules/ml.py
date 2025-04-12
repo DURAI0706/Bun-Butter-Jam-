@@ -117,40 +117,31 @@ def train_models_with_features(_X, _y, test_size, selected_models):
             "type": "sklearn"
         },
         "ARIMA": {
-            "model": None,  # Will be handled specially
-            "params": {
-                "order": [(1, 1, 0), (2, 1, 1), (3, 1, 2)]
-            },
+            "model": None,
+            "params": {"order": [(1, 1, 0), (2, 1, 1), (3, 1, 2)]},
             "type": "statsmodels"
         },
         "SARIMA": {
-            "model": None,  # Will be handled specially
-            "params": {
-                "order": [(1, 1, 1)],
-                "seasonal_order": [(1, 1, 1, 12)]
-            },
+            "model": None,
+            "params": {"order": [(1, 1, 1)], "seasonal_order": [(1, 1, 1, 12)]},
             "type": "statsmodels"
         },
         "Holt-Winters": {
-            "model": None,  # Will be handled specially
-            "params": {
-                "trend": ['add', 'mul'],
-                "seasonal": ['add', 'mul'],
-                "seasonal_periods": [12]
-            },
+            "model": None,
+            "params": {"trend": ['add', 'mul'], "seasonal": ['add', 'mul'], "seasonal_periods": [12]},
             "type": "statsmodels"
         },
         "Prophet": {
-            "model": None,  # Will be handled specially
-            "params": {
-                "seasonality_mode": ['additive', 'multiplicative'],
-                "weekly_seasonality": [True],
-                "daily_seasonality": [False]
-            },
+            "model": None,
+            "params": {"seasonality_mode": ['additive', 'multiplicative'], 
+                      "weekly_seasonality": [True], "daily_seasonality": [False]},
             "type": "prophet"
         }
     }
 
+    # Split data for training and testing
+    X_train, X_test, y_train, y_test = train_test_split(_X, _y, test_size=test_size, random_state=42)
+    
     # Time series split for evaluation
     tscv = TimeSeriesSplit(n_splits=3)
     
@@ -158,31 +149,229 @@ def train_models_with_features(_X, _y, test_size, selected_models):
     best_models = {}
 
     for name in selected_models:
+        if name not in models_config:
+            st.warning(f"Model {name} not found in configuration")
+            continue
+            
         config = models_config[name]
-        grid_search = GridSearchCV(
-            config["model"], 
-            config["params"], 
-            scoring='r2', 
-            cv=tscv, 
-            n_jobs=-1
-        )
-        grid_search.fit(_X, _y)
+        model_type = config["type"]
         
-        best_model = grid_search.best_estimator_
-        y_pred = best_model.predict(_X)
+        try:
+            if model_type == "sklearn":
+                # Standard sklearn models
+                grid_search = GridSearchCV(
+                    config["model"], 
+                    config["params"], 
+                    scoring='r2', 
+                    cv=tscv, 
+                    n_jobs=-1
+                )
+                grid_search.fit(X_train, y_train)
+                
+                best_model = grid_search.best_estimator_
+                y_pred = best_model.predict(X_test)
+                
+                results[name] = {
+                    'MSE': mean_squared_error(y_test, y_pred),
+                    'R2': r2_score(y_test, y_pred),
+                    'MAE': mean_absolute_error(y_test, y_pred),
+                    'Explained Variance': explained_variance_score(y_test, y_pred),
+                    'Max Error': max_error(y_test, y_pred),
+                    'Predictions': y_pred,
+                    'Best Params': grid_search.best_params_
+                }
+                best_models[name] = best_model
+                
+            elif model_type == "statsmodels":
+                # Time series models from statsmodels
+                best_params = {}
+                best_mse = float('inf')
+                best_model = None
+                best_preds = None
+                
+                # Convert to pandas Series for time series models
+                # For time series models, we use the full series for training
+                # and forecast the test portion
+                full_series = pd.Series(_y)
+                train_series = pd.Series(y_train)
+                
+                if name == "ARIMA":
+                    for order in config["params"]["order"]:
+                        try:
+                            # Create and fit ARIMA model
+                            model = ARIMA(train_series, order=order)
+                            fitted = model.fit()
+                            
+                            # Forecast test data points
+                            preds = fitted.forecast(steps=len(y_test))
+                            mse = mean_squared_error(y_test, preds)
+                            
+                            if mse < best_mse:
+                                best_mse = mse
+                                best_model = fitted
+                                best_preds = preds
+                                best_params = {"order": order}
+                        except Exception as e:
+                            st.warning(f"ARIMA {order} failed: {str(e)}")
+                            continue
+                            
+                elif name == "SARIMA":
+                    for order in config["params"]["order"]:
+                        for seasonal_order in config["params"]["seasonal_order"]:
+                            try:
+                                # Create and fit SARIMA model
+                                model = SARIMAX(train_series, order=order, seasonal_order=seasonal_order)
+                                fitted = model.fit(disp=False)
+                                
+                                # Forecast test data points
+                                preds = fitted.forecast(steps=len(y_test))
+                                mse = mean_squared_error(y_test, preds)
+                                
+                                if mse < best_mse:
+                                    best_mse = mse
+                                    best_model = fitted
+                                    best_preds = preds
+                                    best_params = {"order": order, "seasonal_order": seasonal_order}
+                            except Exception as e:
+                                st.warning(f"SARIMA {order}, {seasonal_order} failed: {str(e)}")
+                                continue
+                                
+                elif name == "Holt-Winters":
+                    for trend in config["params"]["trend"]:
+                        for seasonal in config["params"]["seasonal"]:
+                            for seasonal_periods in config["params"]["seasonal_periods"]:
+                                try:
+                                    # Create and fit Holt-Winters model
+                                    model = ExponentialSmoothing(
+                                        train_series, 
+                                        trend=trend,
+                                        seasonal=seasonal,
+                                        seasonal_periods=seasonal_periods
+                                    )
+                                    fitted = model.fit()
+                                    
+                                    # Forecast test data points
+                                    preds = fitted.forecast(steps=len(y_test))
+                                    mse = mean_squared_error(y_test, preds)
+                                    
+                                    if mse < best_mse:
+                                        best_mse = mse
+                                        best_model = fitted
+                                        best_preds = preds
+                                        best_params = {
+                                            "trend": trend,
+                                            "seasonal": seasonal,
+                                            "seasonal_periods": seasonal_periods
+                                        }
+                                except Exception as e:
+                                    st.warning(f"Holt-Winters {trend}, {seasonal} failed: {str(e)}")
+                                    continue
+                
+                # Calculate metrics if a model was successfully fit
+                if best_model is not None:
+                    try:
+                        r2 = r2_score(y_test, best_preds)
+                        mae = mean_absolute_error(y_test, best_preds)
+                        explained_var = explained_variance_score(y_test, best_preds)
+                        max_err = max_error(y_test, best_preds)
+                        
+                        results[name] = {
+                            'MSE': best_mse,
+                            'R2': r2,
+                            'MAE': mae,
+                            'Explained Variance': explained_var,
+                            'Max Error': max_err,
+                            'Predictions': best_preds,
+                            'Best Params': best_params
+                        }
+                        best_models[name] = best_model
+                    except Exception as e:
+                        st.warning(f"Failed to calculate metrics for {name}: {str(e)}")
+                else:
+                    st.warning(f"Could not fit {name} model with any parameters")
+                    
+            elif model_type == "prophet":
+                # Prophet model handling
+                best_params = {}
+                best_mse = float('inf')
+                best_model = None
+                best_preds = None
+                
+                # Create dataframes for Prophet
+                # Prophet requires 'ds' (date) and 'y' (target) columns
+                date_range = pd.date_range(start='2022-01-01', periods=len(_y))
+                prophet_full = pd.DataFrame({
+                    'ds': date_range,
+                    'y': _y
+                })
+                
+                # Split into train and test
+                prophet_train = prophet_full.iloc[:len(y_train)]
+                prophet_test_dates = prophet_full.iloc[len(y_train):]['ds']
+                
+                for seasonality_mode in config["params"]["seasonality_mode"]:
+                    for weekly_seasonality in config["params"]["weekly_seasonality"]:
+                        for daily_seasonality in config["params"]["daily_seasonality"]:
+                            try:
+                                # Create and fit Prophet model
+                                model = Prophet(
+                                    seasonality_mode=seasonality_mode,
+                                    weekly_seasonality=weekly_seasonality,
+                                    daily_seasonality=daily_seasonality
+                                )
+                                model.fit(prophet_train)
+                                
+                                # Create future dataframe for prediction
+                                future = pd.DataFrame({'ds': prophet_test_dates})
+                                forecast = model.predict(future)
+                                preds = forecast['yhat'].values
+                                
+                                mse = mean_squared_error(y_test, preds)
+                                
+                                if mse < best_mse:
+                                    best_mse = mse
+                                    best_model = model
+                                    best_preds = preds
+                                    best_params = {
+                                        "seasonality_mode": seasonality_mode,
+                                        "weekly_seasonality": weekly_seasonality,
+                                        "daily_seasonality": daily_seasonality
+                                    }
+                            except Exception as e:
+                                st.warning(f"Prophet failed: {str(e)}")
+                                continue
+                
+                # Calculate metrics if a model was successfully fit
+                if best_model is not None:
+                    try:
+                        r2 = r2_score(y_test, best_preds)
+                        mae = mean_absolute_error(y_test, best_preds)
+                        explained_var = explained_variance_score(y_test, best_preds)
+                        max_err = max_error(y_test, best_preds)
+                        
+                        results[name] = {
+                            'MSE': best_mse,
+                            'R2': r2,
+                            'MAE': mae,
+                            'Explained Variance': explained_var,
+                            'Max Error': max_err,
+                            'Predictions': best_preds,
+                            'Best Params': best_params
+                        }
+                        best_models[name] = best_model
+                    except Exception as e:
+                        st.warning(f"Failed to calculate metrics for {name}: {str(e)}")
+                else:
+                    st.warning(f"Could not fit {name} model with any parameters")
         
-        results[name] = {
-            'MSE': mean_squared_error(_y, y_pred),
-            'R2': r2_score(_y, y_pred),
-            'MAE': mean_absolute_error(_y, y_pred),
-            'Explained Variance': explained_variance_score(_y, y_pred),
-            'Max Error': max_error(_y, y_pred),
-            'Predictions': y_pred,
-            'Best Params': grid_search.best_params_
-        }
-        best_models[name] = best_model
+        except Exception as e:
+            st.error(f"Error training {name} model: {str(e)}")
     
-    return results, best_models, _X, _y
+    # Check if any models were successfully trained
+    if not results:
+        st.error("No models were successfully trained. Please try different features or models.")
+    
+    return results, best_models, X_test, y_test
 
 def create_model_comparison_plots(results, y_test):
     """Create all model comparison visualizations"""
