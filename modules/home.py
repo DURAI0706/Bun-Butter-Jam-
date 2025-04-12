@@ -1,3 +1,11 @@
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+import os
+import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
+
 def detect_column_types(df):
     """Detect column types in the dataframe"""
     col_types = {
@@ -215,9 +223,8 @@ def display_metrics(df):
         tile.markdown(f"<p class='metric-title'>{metrics[i]['title']}</p>", unsafe_allow_html=True)
         tile.markdown(f"<p class='metric-value'>{metrics[i]['value']}</p>", unsafe_allow_html=True)
 
-
 def display_charts(df):
-    filtered_df = filter_data(df)
+    df = filter_data(df)
     
     # First row of charts
     row1 = st.columns(2)
@@ -228,7 +235,7 @@ def display_charts(df):
         chart_container1 = st.container(height=300)
         with chart_container1:
             # Group by product and sum quantities
-            product_sales = filtered_df.groupby('Product_Type')['Quantity'].sum().reset_index()
+            product_sales = df.groupby('Product_Type')['Quantity'].sum().reset_index()
             # Sort by quantity in descending order and take top 5
             top_products = product_sales.sort_values('Quantity', ascending=False).head(5)
             
@@ -267,55 +274,59 @@ def display_charts(df):
     with row1[1]:
         st.markdown("<h3 style='text-align: center;'>Sales Contribution by Seller</h3>", unsafe_allow_html=True)
         chart_container2 = st.container(height=300)
+        
         with chart_container2:
-            # Reset seller filter temporarily to show all sellers
+            # Filter based on date range
             temp_df = df[(df['Date'].dt.date >= st.session_state['start_date']) & 
-                        (df['Date'].dt.date <= st.session_state['end_date'])]
-            
-            # Group by seller and sum quantities
-            seller_sales = temp_df.groupby('Seller_Name')['Quantity'].sum().reset_index()
-
-            if not seller_sales.empty:
-                fig = px.pie(
-                    seller_sales,
-                    values='Quantity',
-                    names='Seller_Name',
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                
+                         (df['Date'].dt.date <= st.session_state['end_date'])]
+        
+            if not temp_df.empty:
+                if 'Product_Type' in temp_df.columns:
+                    # Group by Seller and Product_Type
+                    seller_sales = temp_df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
+                    
+                    # Create path for hierarchical sunburst
+                    seller_sales['path'] = seller_sales.apply(lambda row: f"{row['Seller_Name']}/{row['Product_Type']}", axis=1)
+        
+                    fig = px.sunburst(
+                        seller_sales,
+                        path=['Seller_Name', 'Product_Type'],
+                        values='Quantity',
+                        color='Seller_Name',
+                        color_discrete_sequence=px.colors.qualitative.Set3
+                    )
+                else:
+                    # If Product_Type not present, just show Seller breakdown
+                    seller_sales = temp_df.groupby('Seller_Name')['Quantity'].sum().reset_index()
+        
+                    fig = px.sunburst(
+                        seller_sales,
+                        path=['Seller_Name'],
+                        values='Quantity',
+                        color='Seller_Name',
+                        color_discrete_sequence=px.colors.qualitative.Set3
+                    )
+        
                 fig.update_layout(
                     height=250,
-                    margin=dict(l=20, r=20, t=20, b=20),
-                    legend=dict(
-                        orientation="v",
-                        yanchor="middle",
-                        y=0.5,
-                        xanchor="right",
-                        x=1.0,
-                        font=dict(size=16)
-                    )
+                    margin=dict(l=20, r=20, t=20, b=20)
                 )
-                
-                fig.update_traces(
-                    textposition='inside',
-                    textinfo='percent',
-                    textfont_size=14
-                )
-                
+        
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No seller data available for the selected date range.")
+
     
     # Second row of charts
-    row2 = st.columns(2)
+    row2 = st.columns(1)
     
     # Container 3: Daily Sales Trend
     with row2[0]:
         st.markdown("<h3 style='text-align: center;'>Daily Sales Trend</h3>", unsafe_allow_html=True)
         chart_container3 = st.container(height=300)
         with chart_container3:
-            daily_sales = filtered_df.groupby(filtered_df['Date'].dt.date)['Quantity'].sum().reset_index()
-            
+            daily_sales = df.groupby(df['Date'].dt.date)['Quantity'].sum().reset_index()
+    
             if not daily_sales.empty and len(daily_sales) > 1:
                 fig = px.line(
                     daily_sales, 
@@ -323,7 +334,7 @@ def display_charts(df):
                     y='Quantity',
                     markers=True
                 )
-                
+    
                 fig.update_layout(
                     height=250,
                     margin=dict(l=20, r=20, t=20, b=20),
@@ -336,72 +347,83 @@ def display_charts(df):
             else:
                 st.info("Not enough daily data available for trend chart.")
     
-    # Container 4: Revenue by Product Type
-    with row2[1]:
+    row3 = st.columns(1)
+    
+    # Container 4: Product Count by Seller
+    with row3[0]:
         st.markdown("<h3 style='text-align: center;'>Product Count by Seller</h3>", unsafe_allow_html=True)
-        chart_container4 = st.container(height=300)
+        chart_container4 = st.container(height=500)  # Increased height here
+        
         with chart_container4:
             # Group by seller and product, then count
-            seller_product_counts = filtered_df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
-            
+            seller_product_counts = df.groupby(['Seller_Name', 'Product_Type'])['Quantity'].sum().reset_index()
+        
             if not seller_product_counts.empty:
-                # Create stacked horizontal bar chart
+                # Create stacked vertical column chart
                 fig = px.bar(
                     seller_product_counts,
-                    x='Quantity',
-                    y='Seller_Name',
+                    x='Seller_Name',
+                    y='Quantity',
                     color='Product_Type',
-                    orientation='h',
                     color_discrete_sequence=px.colors.qualitative.Bold
                 )
-                
+        
                 fig.update_layout(
-                    height=250,
-                    margin=dict(l=20, r=20, t=20, b=20),
-                    xaxis_title="Product Count",
-                    yaxis_title="Seller",
+                    height=450,  # Bigger chart
+                    margin=dict(l=40, r=40, t=40, b=40),
+                    xaxis_title="Seller",
+                    yaxis_title="Product Count",
                     legend_title="Product Type",
                     barmode='stack',
-                    yaxis=dict(
-                        autorange="reversed",  # To match the example image
+                    xaxis=dict(
                         categoryorder='total descending'
                     ),
-                    font=dict(color="white"),
-                    xaxis=dict(
+                    font=dict(size=14),
+                    yaxis=dict(
                         showgrid=True,
-                        gridcolor='rgba(255, 255, 255, 0.2)'
+                        gridcolor='rgba(200, 200, 200, 0.2)'
                     )
                 )
-                
+        
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No data available for the selected filters.")
 
-def main():
-    # Always use default dataset
-    df = load_data(None)
+def load_module():
+   
+    # Sidebar for file upload
+    uploaded_file = st.sidebar.file_uploader(
+        "Upload CSV or Excel file (optional, defaults to Coronation Bakery Dataset)",
+        type=["csv", "xlsx", "xls"]
+    )
+
+    # Load either the uploaded file or the default dataset
+    df = load_data(uploaded_file)
     if df is None:
         st.error("❌ Failed to load dataset.")
         return
 
     # Set dataset name
-    dataset_name = "Coronation Bakery Dataset"
-    st.sidebar.info("📂 Using default: Coronation Bakery Dataset.csv")
-
+    if uploaded_file:
+        dataset_name = uploaded_file.name.split('.')[0].replace('_', ' ').title()
+        st.sidebar.success(f"✅ Loaded file: {uploaded_file.name}")
+    else:
+        dataset_name = "Coronation Bakery Dataset"
+        st.sidebar.info("📂 Using default: Coronation Bakery Dataset.csv")
+    
     # Display main dashboard
     st.markdown(f"<h1 style='text-align: center;'>{dataset_name} Sales Dashboard</h1>", unsafe_allow_html=True)
-
+    
     # Initialize sellers and products list if not already in session state
     if 'sales_data' not in st.session_state:
         st.session_state['sales_data'] = df
-
+    
     # Display main filters, metrics and charts
     create_filters(df)
     display_metrics(df)
     display_charts(df)
-
+    
     st.sidebar.success(f"✅ {len(df)} rows × {len(df.columns)} columns")
-
 
 if __name__ == "__main__":
     main()
