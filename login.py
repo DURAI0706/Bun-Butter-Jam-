@@ -233,16 +233,17 @@ def show_login_page():
     auth_url = get_google_auth_url()
     if auth_url:
         st.markdown(f"""
-        <div class="centered-login">
-            <div class="glass-container">
-                <h2>🔐 Login to Coronation Bakery Dashboard</h2>
-                <a href="{auth_url}" class="glass-button">
-                    <img src="https://cdn-icons-png.flaticon.com/256/2991/2991148.png" width="20">
-                    LOGIN
-                </a>
+            <div class="centered-login">
+                <div class="glass-container">
+                    <h2>🔐 Login to Coronation Bakery Dashboard</h2>
+                    <div class="button-wrapper">
+                        <a href="{auth_url}" class="glass-button">
+                            <img src="https://cdn-icons-png.flaticon.com/256/2991/2991148.png" width="20">
+                            LOGIN
+                        </a>
+                    </div>
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
     else:
         st.error("🚨 Failed to create Google login link.")
 
