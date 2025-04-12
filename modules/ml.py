@@ -107,7 +107,37 @@ def train_models_with_features(_X, _y, test_size, selected_models):
             "model": KNeighborsRegressor(),
             "params": {"n_neighbors": [3, 5, 10]}
         }
+        "ARIMA": {
+            "model": ARIMA(),
+            "params": {
+                "order": [(1, 1, 0), (2, 1, 1), (3, 1, 2)]
+            }
+        },
+        "SARIMA": {
+            "model": SARIMAX(),
+            "params": {
+                "order": [(1, 1, 1)],
+                "seasonal_order": [(1, 1, 1, 12)]
+            }
+        },
+        "Holt-Winters": {
+            "model": ExponentialSmoothing(),
+            "params": {
+                "trend": ['add', 'mul'],
+                "seasonal": ['add', 'mul'],
+                "seasonal_periods": [12]
+            }
+        },
+        "Prophet": {
+            "model": Prophet(),
+            "params": {
+                "seasonality_mode": ['additive', 'multiplicative'],
+                "weekly_seasonality": [True],
+                "daily_seasonality": [False]
+            }
+        }
     }
+
 
     # Time series split for evaluation
     tscv = TimeSeriesSplit(n_splits=3)
