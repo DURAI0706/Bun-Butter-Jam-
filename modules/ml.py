@@ -153,18 +153,23 @@ def market_basket_analysis(df):
     @st.cache_data
     def prepare_basket_data(_df):
         try:
-            # Ensure required columns exist
+            # In the market_basket_analysis function, change these lines:
             if 'Transaction_ID' not in _df.columns or 'Product_Type' not in _df.columns or 'Quantity' not in _df.columns:
                 st.error("Missing required columns for Market Basket Analysis")
                 st.stop()
             
-            # Create transaction dataframe
-            basket = (_df.groupby(['Transaction_ID', 'Product_Type'])['Quantity']
+            # To match your actual column names, for example:
+            if 'OrderID' not in _df.columns or 'Product' not in _df.columns or 'Qty' not in _df.columns:
+                st.error("Missing required columns for Market Basket Analysis")
+                st.stop()
+            
+            # And update the groupby line accordingly:
+            basket = (_df.groupby(['OrderID', 'Product'])['Qty']
                      .sum()
                      .unstack()
                      .reset_index()
                      .fillna(0)
-                     .set_index('Transaction_ID'))
+                     .set_index('OrderID'))
             
             # Convert to binary (1 if product was purchased, 0 otherwise)
             basket_sets = basket.applymap(lambda x: 1 if x > 0 else 0)
