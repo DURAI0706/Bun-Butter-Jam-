@@ -12,6 +12,26 @@ import os
 # THIS MUST BE THE FIRST STREAMLIT COMMAND
 
 # Load data function with error handling
+def convert_to_datetime(df):
+    """Convert object columns to datetime with explicit formats"""
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            try:
+                for fmt in [
+                    '%Y-%m-%d', '%m/%d/%Y', '%d/%m/%Y', '%Y%m%d', 
+                    '%Y-%m-%d %H:%M:%S', '%m/%d/%Y %I:%M %p'
+                ]:
+                    try:
+                        df[col] = pd.to_datetime(df[col], format=fmt, errors='raise')
+                        if pd.api.types.is_datetime64_any_dtype(df[col]):
+                            st.sidebar.success(f"Converted '{col}' to datetime using format: {fmt}")
+                            break
+                    except (ValueError, TypeError):
+                        continue
+            except Exception as e:
+                st.warning(f"Could not convert column '{col}' to datetime: {str(e)}")
+    return df
+    
 @st.cache_data
 def load_data(uploaded_file=None):
     """Load data from uploaded file or default CSV with caching"""
