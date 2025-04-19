@@ -10,7 +10,7 @@ from dateutil import parser
 from mlxtend.frequent_patterns import apriori, association_rules
 
 # Set page config
-st.set_page_config(page_title="Retail Analytics Dashboard", layout="wide")
+st.set_page_config(page_title="Retail Analytics Dashboard")
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
