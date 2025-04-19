@@ -526,7 +526,6 @@ def market_basket_analysis(df):
 
 # Main app function
 def main():
-    st.set_page_config(page_title="Bakery Analytics Dashboard", layout="wide")
     
     st.sidebar.title("Bakery Analytics Dashboard")
     
