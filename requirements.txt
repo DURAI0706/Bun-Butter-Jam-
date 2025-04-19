@@ -10,3 +10,8 @@ statsmodels==0.14.1
 streamlit-extras==0.3.0
 streamlit-option-menu==0.3.2
 prophet==1.1.5
+seaborn==0.13.0
+matplotlib==3.8.2
+mlxtend==0.23.1
+python-dateutil==2.8.2
+holidays==0.36
