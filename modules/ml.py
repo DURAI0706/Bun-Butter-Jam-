@@ -143,116 +143,161 @@ def sales_forecasting(df):
     except Exception as e:
         st.error(f"Error: {str(e)}. Please enter a valid month and year (e.g., May 2025)")
 
-# Market basket analysis with error handling
+# Modified Market basket analysis function to work with available columns
 def market_basket_analysis(df):
     st.title("🛒 Market Basket Analysis")
     
     st.write("This analysis identifies products that are frequently purchased together.")
     
-    # Prepare data for market basket analysis with error handling
+    # Prepare data for market basket analysis with the available columns
     @st.cache_data
     def prepare_basket_data(_df):
         try:
-            # In the market_basket_analysis function, change these lines:
-            if 'Transaction_ID' not in _df.columns or 'Product_Type' not in _df.columns or 'Quantity' not in _df.columns:
-                st.error("Missing required columns for Market Basket Analysis")
-                st.stop()
+            # Check if required columns exist
+            required_columns = ['Date', 'Seller_Name', 'Product_Type', 'Quantity']
+            missing_columns = [col for col in required_columns if col not in _df.columns]
             
-            # To match your actual column names, for example:
-            if 'OrderID' not in _df.columns or 'Product' not in _df.columns or 'Qty' not in _df.columns:
-                st.error("Missing required columns for Market Basket Analysis")
+            if missing_columns:
+                st.error(f"Missing required columns: {', '.join(missing_columns)}")
                 st.stop()
+                
+            # Make a copy to avoid modifying the original dataframe
+            basket_df = _df.copy()
             
-            # And update the groupby line accordingly:
-            basket = (_df.groupby(['OrderID', 'Product'])['Qty']
+            # Create synthetic transaction IDs based on Date and Seller_Name
+            # This assumes that each seller has unique transactions per day
+            st.info("Creating synthetic transaction IDs using Date and Seller_Name")
+            
+            # Ensure Date is in datetime format
+            if not pd.api.types.is_datetime64_any_dtype(basket_df['Date']):
+                basket_df['Date'] = pd.to_datetime(basket_df['Date'])
+                
+            # Create a transaction ID using date and seller name
+            basket_df['Transaction_ID'] = basket_df['Date'].dt.strftime('%Y%m%d') + '_' + basket_df['Seller_Name']
+            
+            # Create transaction dataframe - each row is a transaction, each column is a product
+            basket = (basket_df.groupby(['Transaction_ID', 'Product_Type'])['Quantity']
                      .sum()
                      .unstack()
                      .reset_index()
                      .fillna(0)
-                     .set_index('OrderID'))
+                     .set_index('Transaction_ID'))
             
             # Convert to binary (1 if product was purchased, 0 otherwise)
             basket_sets = basket.applymap(lambda x: 1 if x > 0 else 0)
+            
             return basket_sets
+            
         except Exception as e:
             st.error(f"Error preparing basket data: {str(e)}")
             st.stop()
     
     try:
+        st.info("Grouping sales by Date and Seller to create transaction groups")
         basket_sets = prepare_basket_data(df)
         
         # User inputs for MBA parameters
         col1, col2 = st.columns(2)
         with col1:
-            min_support = st.slider("Minimum Support", 0.01, 0.2, 0.05, 0.01)
+            min_support = st.slider("Minimum Support", 0.01, 0.2, 0.05, 0.01, 
+                                    help="Products must appear in at least this fraction of transactions")
         with col2:
-            min_threshold = st.slider("Minimum Confidence Threshold", 0.1, 1.0, 0.5, 0.05)
+            min_threshold = st.slider("Minimum Confidence Threshold", 0.1, 1.0, 0.5, 0.05,
+                                     help="Minimum probability that items in consequent appear when items in antecedent are present")
         
         if st.button("Run Market Basket Analysis"):
             with st.spinner('Finding frequent itemsets...'):
-                # Find frequent itemsets
+                # Find frequent itemsets with progress feedback
+                st.text("Step 1/3: Identifying frequently purchased products...")
                 frequent_itemsets = apriori(basket_sets, min_support=min_support, use_colnames=True)
                 
                 if not frequent_itemsets.empty:
                     # Generate association rules
+                    st.text("Step 2/3: Discovering purchase patterns...")
                     rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=min_threshold)
                     
                     # Filter and sort rules
+                    st.text("Step 3/3: Analyzing strength of relationships...")
                     rules = rules.sort_values(['confidence', 'lift'], ascending=[False, False])
                     
                     # Display top rules
                     st.subheader("Top Association Rules")
-                    st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].head(10))
-                    
-                    # Visualize the rules
-                    st.subheader("Rule Visualization")
-                    
-                    fig, ax = plt.subplots(figsize=(10, 6))
-                    scatter = sns.scatterplot(
-                        data=rules.head(20),
-                        x="support",
-                        y="confidence",
-                        size="lift",
-                        hue="lift",
-                        sizes=(20, 200),
-                        ax=ax
-                    )
-                    plt.title("Association Rules (Size = Lift)")
-                    plt.xlabel("Support")
-                    plt.ylabel("Confidence")
-                    st.pyplot(fig)
-                    
-                    # Display actionable insights
-                    st.subheader("Actionable Insights")
-                    if not rules.empty:
-                        top_rule = rules.iloc[0]
-                        st.write(f"💡 When customers buy **{', '.join(list(top_rule['antecedents']))}**, "
-                                f"they are **{top_rule['confidence']:.0%}** likely to also buy "
-                                f"**{', '.join(list(top_rule['consequents']))}** (lift: {top_rule['lift']:.2f})")
+                    if rules.empty:
+                        st.warning("No strong associations found with current settings. Try lowering the support or confidence thresholds.")
+                    else:
+                        # Make the antecedents and consequents more readable
+                        rules_display = rules.copy()
                         
-                        st.write("""
-                        **Recommendations:**
-                        - Place these products near each other in the store
-                        - Create bundle offers for these product combinations
-                        - Use these associations in cross-selling recommendations
-                        """)
+                        # Convert frozensets to readable strings
+                        rules_display['antecedents'] = rules_display['antecedents'].apply(lambda x: ', '.join(list(x)))
+                        rules_display['consequents'] = rules_display['consequents'].apply(lambda x: ', '.join(list(x)))
+                        
+                        # Format metrics for better readability
+                        rules_display['support'] = rules_display['support'].map('{:.1%}'.format)
+                        rules_display['confidence'] = rules_display['confidence'].map('{:.1%}'.format)
+                        rules_display['lift'] = rules_display['lift'].map('{:.2f}'.format)
+                        
+                        st.dataframe(rules_display[['antecedents', 'consequents', 'support', 'confidence', 'lift']].head(10))
+                        
+                        # Visualize the rules
+                        st.subheader("Rule Visualization")
+                        
+                        fig, ax = plt.subplots(figsize=(10, 6))
+                        scatter = sns.scatterplot(
+                            data=rules.head(20),
+                            x="support",
+                            y="confidence",
+                            size="lift",
+                            hue="lift",
+                            sizes=(20, 200),
+                            ax=ax
+                        )
+                        plt.title("Association Rules (Size = Lift)")
+                        plt.xlabel("Support")
+                        plt.ylabel("Confidence")
+                        st.pyplot(fig)
+                        
+                        # Display actionable insights
+                        st.subheader("Actionable Insights")
+                        if not rules.empty:
+                            top_rule = rules.iloc[0]
+                            st.write(f"💡 When customers buy **{', '.join(list(top_rule['antecedents']))}**, "
+                                    f"they are **{top_rule['confidence']:.0%}** likely to also buy "
+                                    f"**{', '.join(list(top_rule['consequents']))}** (lift: {top_rule['lift']:.2f})")
+                            
+                            st.write("""
+                            **Recommendations:**
+                            - Place these products near each other in the store
+                            - Create bundle offers for these product combinations
+                            - Use these associations in cross-selling recommendations
+                            """)
                 else:
-                    st.warning("No association rules found with the current parameters. Try lowering the minimum support or confidence threshold.")
+                    st.warning("No frequent itemsets found with the current support threshold. Try lowering the minimum support.")
     except Exception as e:
         st.error(f"Error in Market Basket Analysis: {str(e)}")
+        st.info("Detailed error information for debugging:")
+        st.exception(e)
 
 # Main app function
 def main():
     df = load_data()
     
-    # Sidebar for navigation
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Sales Forecasting", "Market Basket Analysis"])
-    
-    if page == "Sales Forecasting":
-        sales_forecasting(df)
-    elif page == "Market Basket Analysis":
-        market_basket_analysis(df)
+    if df is not None:
+        # Display dataset information
+        st.sidebar.subheader("Dataset Information")
+        st.sidebar.info(f"Rows: {df.shape[0]}, Columns: {df.shape[1]}")
+        st.sidebar.write("Available columns:", ", ".join(df.columns.tolist()))
+        
+        # Sidebar for navigation
+        st.sidebar.title("Navigation")
+        page = st.sidebar.radio("Go to", ["Sales Forecasting", "Market Basket Analysis"])
+        
+        if page == "Sales Forecasting":
+            sales_forecasting(df)
+        elif page == "Market Basket Analysis":
+            market_basket_analysis(df)
+    else:
+        st.error("Please upload a valid dataset or fix the data loading issues.")
 
 if __name__ == "__main__":
     main()
