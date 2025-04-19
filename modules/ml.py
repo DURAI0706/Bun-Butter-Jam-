@@ -151,33 +151,30 @@ def market_basket_analysis(df):
     @st.cache_data
     def prepare_basket_data(_df):
         required_columns = ['Date', 'Seller_Name', 'Product_Type', 'Quantity']
-        missing_columns = [col for col in required_columns if col not in _df.columns]
-
-        if missing_columns:
-            st.error(f"Missing required columns: {', '.join(missing_columns)}")
+        missing = [col for col in required_columns if col not in _df.columns]
+        if missing:
+            st.error(f"Missing columns: {', '.join(missing)}")
             st.stop()
 
         basket_df = _df.copy()
+        basket_df['Date'] = pd.to_datetime(basket_df['Date'])
 
-        # Ensure Date is datetime
-        if not pd.api.types.is_datetime64_any_dtype(basket_df['Date']):
-            basket_df['Date'] = pd.to_datetime(basket_df['Date'])
+        # 👇 Better Transaction ID: Includes time to avoid over-grouping
+        basket_df['Transaction_ID'] = (
+            basket_df['Date'].dt.strftime('%Y%m%d%H%M%S') + '_' + basket_df['Seller_Name']
+        )
 
-        # Create synthetic transaction ID
-        basket_df['Transaction_ID'] = basket_df['Date'].dt.strftime('%Y%m%d') + '_' + basket_df['Seller_Name']
-
-        # Group by transaction and product
-        basket = (basket_df
-                  .groupby(['Transaction_ID', 'Product_Type'])['Quantity']
-                  .sum().unstack().fillna(0))
-
-        # Convert to binary
-        basket_sets = basket.applymap(lambda x: 1 if x > 0 else 0)
+        # 👇 One-hot encoded product matrix (binary)
+        product_matrix = (
+            basket_df.groupby(['Transaction_ID', 'Product_Type'])['Quantity']
+            .sum().unstack().fillna(0)
+        )
+        basket_sets = product_matrix.applymap(lambda x: 1 if x > 0 else 0)
 
         return basket_sets
 
     try:
-        st.info("Grouping sales by Date and Seller to create transactions...")
+        st.info("Preparing transaction data...")
         basket_sets = prepare_basket_data(df)
 
         col1, col2 = st.columns(2)
@@ -187,36 +184,34 @@ def market_basket_analysis(df):
             min_confidence = st.slider("Minimum Confidence", 0.1, 1.0, 0.5, 0.05)
 
         if st.button("Run Market Basket Analysis"):
-            with st.spinner("Running analysis..."):
-                st.text("Step 1/3: Finding frequent itemsets...")
+            with st.spinner("Analyzing basket data..."):
+                # 🧮 Frequent itemsets
                 frequent_itemsets = apriori(basket_sets, min_support=min_support, use_colnames=True)
-
                 if frequent_itemsets.empty:
                     st.warning("No frequent itemsets found. Try lowering support.")
                     return
 
-                st.text("Step 2/3: Generating association rules...")
+                # 🔗 Association rules
                 rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=min_confidence)
-
                 if rules.empty:
                     st.warning("No association rules found. Try lowering confidence.")
                     return
 
-                st.text("Step 3/3: Sorting and displaying top rules...")
+                # 🎯 Top 5 sorted by confidence, then lift
                 rules = rules.sort_values(by=['confidence', 'lift'], ascending=[False, False])
                 top_rules = rules.head(5).copy()
 
-                # Display top 5 rules
+                # 📋 Display nicely
                 st.subheader("Top 5 Association Rules")
-                top_rules['antecedents'] = top_rules['antecedents'].apply(lambda x: ', '.join(list(x)))
-                top_rules['consequents'] = top_rules['consequents'].apply(lambda x: ', '.join(list(x)))
+                top_rules['antecedents'] = top_rules['antecedents'].apply(lambda x: ', '.join(sorted(list(x))))
+                top_rules['consequents'] = top_rules['consequents'].apply(lambda x: ', '.join(sorted(list(x))))
                 top_rules['support'] = top_rules['support'].map('{:.1%}'.format)
                 top_rules['confidence'] = top_rules['confidence'].map('{:.1%}'.format)
                 top_rules['lift'] = top_rules['lift'].map('{:.2f}'.format)
 
                 st.dataframe(top_rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
 
-                # Visualization
+                # 📊 Visualization
                 st.subheader("Rule Visualization")
                 fig, ax = plt.subplots(figsize=(10, 6))
                 sns.scatterplot(
@@ -233,7 +228,7 @@ def market_basket_analysis(df):
                 plt.ylabel("Confidence")
                 st.pyplot(fig)
 
-                # Actionable Insight
+                # 💡 Actionable insight
                 st.subheader("Actionable Insight")
                 top_rule = rules.iloc[0]
                 st.write(f"💡 If customers buy **{', '.join(list(top_rule['antecedents']))}**, "
@@ -241,9 +236,9 @@ def market_basket_analysis(df):
                          f"**{', '.join(list(top_rule['consequents']))}** (lift: {top_rule['lift']:.2f})")
                 st.markdown("""
                 **Recommendations:**
-                - Cross-promote these items in marketing campaigns
-                - Bundle them in offers
-                - Place them closer together in stores
+                - Cross-promote or bundle these items
+                - Highlight these pairs in marketing emails
+                - Optimize shelf placement or app suggestions
                 """)
     except Exception as e:
         st.error("An error occurred during analysis.")
