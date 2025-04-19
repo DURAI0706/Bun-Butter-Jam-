@@ -9,15 +9,13 @@ import calendar
 from dateutil import parser
 from mlxtend.frequent_patterns import apriori, association_rules
 
-# Set page config
-# Sidebar for navigation
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Sales Forecasting", "Market Basket Analysis"])
+# Load data function
+@st.cache_data
+def load_data():
+    return pd.read_csv("Coronation Bakery Dataset.csv")
 
-# Load data
-df = pd.read_csv("Coronation Bakery Dataset.csv")
-
-if page == "Sales Forecasting":
+# Sales forecasting page
+def sales_forecasting(df):
     st.title("🔮 Product Sales Forecasting")
     
     # User input for month and year
@@ -88,7 +86,8 @@ if page == "Sales Forecasting":
     except Exception as e:
         st.error(f"Error: {e}. Please enter a valid month and year (e.g., May 2025)")
 
-elif page == "Market Basket Analysis":
+# Market basket analysis page
+def market_basket_analysis(df):
     st.title("🛒 Market Basket Analysis")
     
     st.write("""
@@ -160,3 +159,19 @@ elif page == "Market Basket Analysis":
                 """)
             else:
                 st.warning("No association rules found with the current parameters. Try lowering the minimum support or confidence threshold.")
+
+# Main app function
+def main():
+    df = load_data()
+    
+    # Sidebar for navigation
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Go to", ["Sales Forecasting", "Market Basket Analysis"])
+    
+    if page == "Sales Forecasting":
+        sales_forecasting(df)
+    elif page == "Market Basket Analysis":
+        market_basket_analysis(df)
+
+if __name__ == "__main__":
+    main()
