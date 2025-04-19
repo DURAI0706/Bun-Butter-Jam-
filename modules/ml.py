@@ -8,7 +8,7 @@ import holidays
 import calendar
 from dateutil import parser
 from mlxtend.frequent_patterns import apriori, association_rules
-
+import os
 # THIS MUST BE THE FIRST STREAMLIT COMMAND
 
 # Load data function with error handling
