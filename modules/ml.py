@@ -10,22 +10,36 @@ from dateutil import parser
 from mlxtend.frequent_patterns import apriori, association_rules
 
 # THIS MUST BE THE FIRST STREAMLIT COMMAND
-st.set_page_config(page_title="🎂 Coronation Bakery Sales Analytics", layout="wide")
 
 # Load data function with error handling
 @st.cache_data
-def load_data():
+def load_data(uploaded_file=None):
+    """Load data from uploaded file or default CSV with caching"""
     try:
-        df = pd.read_csv("Coronation Bakery Dataset.csv", parse_dates=['Date'])
-        # Ensure required columns exist
-        required_columns = ['Transaction_ID', 'Product_Type', 'Quantity', 'Date']
-        if not all(col in df.columns for col in required_columns):
-            st.error("CSV file is missing required columns. Please check your dataset.")
-            st.stop()
+        if uploaded_file is not None:
+            # Handle user uploaded files
+            if uploaded_file.name.endswith('.csv'):
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_excel(uploaded_file)
+        else:
+            # Load default data file from specific path
+            file_path = os.path.join('data', 'Coronation Bakery Dataset.csv')
+            if not os.path.exists(file_path):
+                st.error(f"Data file not found at: {file_path}")
+                st.info("Please ensure your CSV file is in the 'data' directory and named 'Coronation Bakery Dataset.csv'")
+                return None
+            df = pd.read_csv(file_path)
+
+        # Convert object columns to datetime where applicable
+        df = convert_to_datetime(df)
+
+        # Store in session state
+        st.session_state['sales_data'] = df
         return df
     except Exception as e:
-        st.error(f"Error loading data: {str(e)}")
-        st.stop()
+        st.error(f"Error loading data: {e}")
+        return None
 
 # Sales forecasting page with date handling
 def sales_forecasting(df):
