@@ -36,7 +36,8 @@ ALLOWED_USERS = {
     "duraisamy@student.tce.edu",
     "pnandhini@student.tce.edu",
     "sowmyashri@student.tce.edu",
-    "krithikaa@student.tce.edu"
+    "krithikaa@student.tce.edu",
+    "anithad@tce.edu"
 }
 
 
