@@ -10,6 +10,7 @@ from dateutil import parser
 from mlxtend.frequent_patterns import apriori, association_rules
 import os
 import numpy as np
+import networkx as nx
 # THIS MUST BE THE FIRST STREAMLIT COMMAND
 
 # Load data function with error handling
