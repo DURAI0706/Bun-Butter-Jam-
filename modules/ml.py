@@ -180,182 +180,216 @@ def market_basket_analysis(df):
 
         # Auto-run when product is selected
         with st.spinner("Finding product associations..."):
-            # First, let's check how common this product is
-            product_frequency = basket_sets[selected_product].mean()
-            st.caption(f"Product frequency: {selected_product} appears in {product_frequency:.1%} of transactions")
+            # Get basic stats about the selected product
+            product_count = basket_sets[selected_product].sum()
+            total_transactions = len(basket_sets)
+            product_frequency = product_count / total_transactions
             
-            # Dynamically set parameters based on product frequency
-            # Less common products need lower support thresholds
-            if product_frequency < 0.01:  # Very rare products
-                support_values = [0.001, 0.002, 0.005, 0.01]
-                max_rules_to_find = 25  # Look for more potential rules for rare items
-            elif product_frequency < 0.05:  # Uncommon products
-                support_values = [0.005, 0.01, 0.02, 0.03]
-                max_rules_to_find = 20
-            elif product_frequency < 0.1:  # Moderately common products
-                support_values = [0.01, 0.02, 0.03, 0.05]
-                max_rules_to_find = 15
-            else:  # Common products
-                support_values = [0.02, 0.03, 0.05, 0.08]
-                max_rules_to_find = 10
-                
-            # Start with modest confidence to avoid overfitting
-            confidence_values = [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5]
+            st.caption(f"Product stats: {selected_product} appears in {product_count} out of {total_transactions} transactions ({product_frequency:.1%})")
             
-            # Prevent overfitting by using diversity metrics
-            all_filtered_rules = pd.DataFrame()
-                
-            # Find a diverse set of rules
-            for min_support in support_values:
-                if not all_filtered_rules.empty and len(all_filtered_rules) >= max_rules_to_find:
-                    break
-                    
-                frequent_itemsets = apriori(basket_sets, min_support=min_support, use_colnames=True)
-                if frequent_itemsets.empty:
-                    continue
-                    
-                for min_conf in confidence_values:
-                    rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=min_conf)
-                    if rules.empty:
-                        continue
-                        
-                    # Filter rules containing the selected product
-                    filtered_rules = rules[
-                        rules['antecedents'].apply(lambda x: selected_product in x) |
-                        rules['consequents'].apply(lambda x: selected_product in x)
-                    ]
-                    
-                    if not filtered_rules.empty:
-                        # Add these rules to our collection
-                        all_filtered_rules = pd.concat([all_filtered_rules, filtered_rules])
-                        # Break if we have enough rules
-                        if len(all_filtered_rules) >= max_rules_to_find:
-                            break
+            # APPROACH 1: Simple co-occurrence analysis (more robust than apriori for small datasets)
+            st.subheader(f"Product Associations for: {selected_product}")
             
-            # Process collected rules
-            if all_filtered_rules.empty:
-                st.warning(f"No meaningful associations found for **{selected_product}**. Try selecting another product.")
+            # Find co-occurrence with other products
+            product_associations = []
+            
+            # Get transactions containing the selected product
+            transactions_with_product = basket_sets[basket_sets[selected_product] == 1]
+            
+            if len(transactions_with_product) == 0:
+                st.warning(f"No transactions found containing {selected_product}")
                 return
                 
-            # Show parameters used for transparency
-            st.caption(f"Analysis parameters dynamically set based on product frequency ({product_frequency:.1%})")
+            # Calculate association metrics for each other product
+            for other_product in all_products:
+                if other_product == selected_product:
+                    continue
+                
+                # Get counts
+                both_count = (transactions_with_product[other_product] == 1).sum()
+                other_product_count = basket_sets[other_product].sum()
+                
+                # Skip if no co-occurrences
+                if both_count == 0:
+                    continue
+                    
+                # Calculate metrics
+                support = both_count / total_transactions
+                confidence = both_count / product_count
+                other_product_frequency = other_product_count / total_transactions
+                lift = confidence / other_product_frequency if other_product_frequency > 0 else 0
+                
+                # Store the association
+                product_associations.append({
+                    'other_product': other_product,
+                    'both_count': both_count,
+                    'support': support,
+                    'confidence': confidence,
+                    'lift': lift
+                })
             
-            # Anti-overfitting: Apply diversity filters
-            # 1. Remove duplicate rules (same antecedents and consequents)
-            all_filtered_rules = all_filtered_rules.drop_duplicates(subset=['antecedents', 'consequents'])
+            # Sort by lift and get top associations
+            if not product_associations:
+                st.warning(f"No meaningful associations found for {selected_product}")
+                return
+                
+            associations_df = pd.DataFrame(product_associations)
             
-            # 2. Prioritize rules with higher lift but reasonable confidence
-            # This helps avoid 100% confidence rules that might be statistical flukes
-            all_filtered_rules['quality_score'] = (
-                all_filtered_rules['lift'] * 
-                np.log1p(all_filtered_rules['support'] * 100) *  # Log-scale support is more meaningful
-                np.tanh(all_filtered_rules['confidence'] * 2)    # Tanh reduces extreme confidence bias
+            # Apply quality filters to prevent overfitting
+            # 1. Minimum occurrence filter (prevent rare coincidences from dominating)
+            min_occurrence = max(3, int(product_count * 0.05))  # At least 3 co-occurrences or 5% of product's transactions
+            filtered_associations = associations_df[associations_df['both_count'] >= min_occurrence]
+            
+            if filtered_associations.empty:
+                # If filter is too strict, take top 5 by raw count
+                filtered_associations = associations_df.sort_values('both_count', ascending=False).head(5)
+                st.caption("Note: Limited data available. Showing associations based on available transactions.")
+            
+            # Calculate a balanced score that doesn't overly favor high confidence
+            filtered_associations['balanced_score'] = (
+                filtered_associations['lift'] * 
+                np.sqrt(filtered_associations['support']) *  # Square root gives more weight to support
+                np.log1p(filtered_associations['both_count'])  # Log of count favors more frequent associations
             )
             
-            best_rules = all_filtered_rules.sort_values('quality_score', ascending=False).head(15)
+            # Get top associations by balanced score
+            top_associations = filtered_associations.sort_values('balanced_score', ascending=False).head(10)
             
-            # Calculate diversity metrics for display
-            rule_count = len(best_rules)
-            avg_confidence = best_rules['confidence'].mean()
-            avg_lift = best_rules['lift'].mean()
-            distinct_products = set()
+            # Display in a more interpretable format
+            display_df = top_associations.copy()
+            display_df['support'] = display_df['support'].map('{:.1%}'.format) 
+            display_df['confidence'] = display_df['confidence'].map('{:.1%}'.format)
+            display_df['lift'] = display_df['lift'].map('{:.2f}'.format)
             
-            for idx, row in best_rules.iterrows():
-                for item in list(row['antecedents']) + list(row['consequents']):
-                    distinct_products.add(item)
+            st.dataframe(
+                display_df[['other_product', 'both_count', 'support', 'confidence', 'lift']]
+                .rename(columns={
+                    'other_product': 'Associated Product',
+                    'both_count': 'Co-occurrences',
+                    'support': 'Support',
+                    'confidence': 'Confidence',
+                    'lift': 'Lift'
+                }),
+                hide_index=True
+            )
             
-            st.subheader(f"Top Product Associations for: {selected_product}")
-            st.caption(f"Found {rule_count} rules connecting {selected_product} with {len(distinct_products)-1} other products")
+            # Visualization - now based on real co-occurrence stats
+            st.subheader("Association Strength Map")
             
-            # Format for display
-            display_rules = best_rules.head(5).copy()  # Only show top 5 to avoid overwhelming
-            display_rules['antecedents'] = display_rules['antecedents'].apply(lambda x: ', '.join(sorted(list(x))))
-            display_rules['consequents'] = display_rules['consequents'].apply(lambda x: ', '.join(sorted(list(x))))
-            display_rules['support'] = display_rules['support'].map('{:.1%}'.format)
-            display_rules['confidence'] = display_rules['confidence'].map('{:.1%}'.format)
-            display_rules['lift'] = display_rules['lift'].map('{:.2f}'.format)
-
-            # Remove quality_score before displaying
-            st.dataframe(display_rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
-
-            # Visualization - now with diversity focus
-            st.subheader("Association Strength Visualization")
+            # Create a more informative visualization
             fig, ax = plt.subplots(figsize=(10, 6))
             
-            # Make plot more informative
+            # Use count for point size to emphasize statistical significance
             scatter = sns.scatterplot(
-                data=best_rules,
+                data=top_associations,
                 x="support", 
                 y="confidence",
-                size="lift",
+                size="both_count",  # Size by actual count, not just lift
                 hue="lift",
                 sizes=(50, 300),
                 ax=ax, 
                 palette="viridis",
-                alpha=0.7
+                alpha=0.8
             )
             
-            # Add rule numbers for easier reference
-            for i, (idx, row) in enumerate(best_rules.iterrows(), 1):
-                if i <= 10:  # Only number the top 10 points
-                    ax.text(row['support']+0.001, row['confidence']+0.01, str(i), 
-                            fontsize=9, ha='center', va='center',
-                            bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
+            # Add labels for important points
+            for i, (_, row) in enumerate(top_associations.head(5).iterrows()):
+                ax.text(
+                    row['support'] + 0.001, 
+                    row['confidence'] + 0.01, 
+                    row['other_product'], 
+                    fontsize=9, 
+                    ha='left',
+                    bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1)
+                )
             
             plt.title(f"Product Association Map for {selected_product}")
-            plt.xlabel("Support (Frequency of Occurrence)")
-            plt.ylabel("Confidence (Strength of Association)")
+            plt.xlabel("Support (% of All Transactions)")
+            plt.ylabel("Confidence (% of Selected Product's Transactions)")
             ax.grid(True, linestyle='--', alpha=0.4)
             
             # Set axes to start from 0
-            ax.set_xlim(0, max(best_rules['support']) * 1.1)
-            ax.set_ylim(0, max(1.0, max(best_rules['confidence']) * 1.1))
+            ax.set_xlim(0, max(top_associations['support']) * 1.1)
+            ax.set_ylim(0, max(top_associations['confidence']) * 1.1)
             
             st.pyplot(fig)
-
-            # Actionable insights section - focus on diversity
+            
+            # Network visualization (alternative view)
+            st.subheader("Product Network Visualization")
+            
+            # Create a network graph with top associations only
+            network_df = top_associations.head(7).copy()  # Limit to avoid cluttered graph
+            
+            G = nx.Graph()
+            G.add_node(selected_product, size=20, color='red')
+            
+            for _, row in network_df.iterrows():
+                other_product = row['other_product']
+                G.add_node(other_product, size=10, color='blue')
+                G.add_edge(selected_product, other_product, weight=row['lift'], count=row['both_count'])
+            
+            # Draw network graph
+            network_fig, network_ax = plt.subplots(figsize=(10, 8))
+            
+            # Position nodes
+            pos = nx.spring_layout(G, seed=42)
+            
+            # Draw nodes
+            nx.draw_networkx_nodes(
+                G, pos, 
+                nodelist=[selected_product], 
+                node_size=1200, 
+                node_color='orangered', 
+                alpha=0.9,
+                label="Selected Product"
+            )
+            
+            nx.draw_networkx_nodes(
+                G, pos, 
+                nodelist=[n for n in G.nodes() if n != selected_product], 
+                node_size=800, 
+                node_color='royalblue', 
+                alpha=0.7,
+                label="Associated Products"
+            )
+            
+            # Draw edges with varying widths based on lift
+            edge_widths = [G[u][v]['weight'] * 2 for u, v in G.edges()]
+            nx.draw_networkx_edges(G, pos, width=edge_widths, alpha=0.7, edge_color='gray')
+            
+            # Add labels with appropriate font size
+            nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
+            
+            # Add legend
+            network_ax.legend()
+            
+            plt.title(f"Product Association Network for {selected_product}")
+            plt.axis('off')
+            st.pyplot(network_fig)
+            
+            # Actionable insights section
             st.subheader("Actionable Insights")
             
-            # Get multiple top rules
-            diverse_insights = []
-            processed_items = set([selected_product])
+            # Get diverse insights
+            top_assoc = top_associations.iloc[0]
+            second_assoc = top_associations.iloc[1] if len(top_associations) > 1 else None
             
-            # Get diverse insights by selecting rules with new products
-            for _, rule in best_rules.iterrows():
-                if len(diverse_insights) >= 3:  # Limit to 3 insights
-                    break
-                    
-                antecedent_items = set(rule['antecedents'])
-                consequent_items = set(rule['consequents'])
-                
-                # Check if this rule introduces new products
-                all_items = antecedent_items.union(consequent_items)
-                if len(all_items.difference(processed_items)) > 0:
-                    # This rule has new items
-                    processed_items.update(all_items)
-                    diverse_insights.append(rule)
+            st.write(f"💡 **Primary Association:** When customers purchase **{selected_product}**, "
+                     f"they buy **{top_assoc['other_product']}** in **{top_assoc['confidence']:.0%}** of cases. "
+                     f"This association is **{top_assoc['lift']:.1f}x** stronger than random chance.")
             
-            # Show diverse insights
-            for i, rule in enumerate(diverse_insights, 1):
-                antecedent = ', '.join(sorted(list(rule['antecedents'])))
-                consequent = ', '.join(sorted(list(rule['consequents'])))
-                
-                if selected_product in rule['antecedents']:
-                    st.write(f"{i}. When customers buy **{selected_product}**, "
-                             f"they are **{rule['confidence']:.1%}** likely to also buy "
-                             f"**{consequent}** (lift: {rule['lift']:.2f})")
-                else:
-                    st.write(f"{i}. When customers buy **{antecedent}**, "
-                             f"they are **{rule['confidence']:.1%}** likely to also buy "
-                             f"**{selected_product}** (lift: {rule['lift']:.2f})")
+            if second_assoc is not None:
+                st.write(f"💡 **Secondary Association:** Another strong association is with **{second_assoc['other_product']}**, "
+                         f"purchased together in **{second_assoc['both_count']}** transactions "
+                         f"({second_assoc['confidence']:.0%} of {selected_product} sales).")
             
-            # Product recommendation strategies
+            # Provide recommendations based on data patterns
             st.markdown("""
             **Recommendation Strategies:**
-            - **Store Layout**: Position frequently associated products close to each other
-            - **Bundle Pricing**: Create discounts for purchasing associated products together
-            - **Targeted Marketing**: Show complementary product ads to customers based on purchase history
-            - **Personalized Recommendations**: Build "Customers Also Bought" features
+            - **Cross-Promotion**: Feature associated products on the same promotional materials
+            - **Store Placement**: Position these products strategically near each other
+            - **Bundle Discounts**: Offer slight discounts when purchased together
+            - **Recommendation Engine**: Add these associations to your "Frequently Bought Together" suggestions
             """)
             
     except Exception as e:
