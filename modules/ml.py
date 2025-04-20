@@ -67,7 +67,7 @@ def sales_forecasting(df):
     st.title("🔮 Product Sales Forecasting")
     
     # User input for month and year
-    user_input = st.text_input("Enter month and year (e.g., May 2025)", "May 2025").strip()
+    user_input = st.text_input("Enter month and year (e.g., Jan 2025)", "Jan 2025").strip()
     
     try:
         parsed_date = parser.parse("01 " + user_input)
@@ -142,7 +142,7 @@ def sales_forecasting(df):
                         st.pyplot(fig2)
                         
     except Exception as e:
-        st.error(f"Error: {str(e)}. Please enter a valid month and year (e.g., May 2025)")
+        st.error(f"Error: {str(e)}. Please enter a valid month and year (e.g., Jan 2025)")
 
 # Completely rewritten Market basket analysis function
 def market_basket_analysis(df):
@@ -168,29 +168,46 @@ def market_basket_analysis(df):
             .sum().unstack().fillna(0)
         )
         basket_sets = product_matrix.applymap(lambda x: 1 if x > 0 else 0)
-        return basket_sets
+        return basket_sets, basket_df
 
     try:
         st.info("Preparing transaction data...")
-        basket_sets = prepare_basket_data(df)
+        basket_sets, original_df = prepare_basket_data(df)
 
         # Let user select a product
         all_products = basket_sets.columns.tolist()
         selected_product = st.selectbox("Select a Product", sorted(all_products))
 
-        # Auto-run when product is selected (no button needed)
+        # Auto-run when product is selected
         with st.spinner("Finding product associations..."):
-            # Support and confidence ranges to try
-            support_values = [0.005, 0.01, 0.02, 0.03, 0.05, 0.1]
-            confidence_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+            # First, let's check how common this product is
+            product_frequency = basket_sets[selected_product].mean()
+            st.caption(f"Product frequency: {selected_product} appears in {product_frequency:.1%} of transactions")
             
-            best_rules = pd.DataFrame()
-            found_rules = False
+            # Dynamically set parameters based on product frequency
+            # Less common products need lower support thresholds
+            if product_frequency < 0.01:  # Very rare products
+                support_values = [0.001, 0.002, 0.005, 0.01]
+                max_rules_to_find = 25  # Look for more potential rules for rare items
+            elif product_frequency < 0.05:  # Uncommon products
+                support_values = [0.005, 0.01, 0.02, 0.03]
+                max_rules_to_find = 20
+            elif product_frequency < 0.1:  # Moderately common products
+                support_values = [0.01, 0.02, 0.03, 0.05]
+                max_rules_to_find = 15
+            else:  # Common products
+                support_values = [0.02, 0.03, 0.05, 0.08]
+                max_rules_to_find = 10
+                
+            # Start with modest confidence to avoid overfitting
+            confidence_values = [0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5]
             
-            # Start with stricter parameters, gradually relax if no rules found
+            # Prevent overfitting by using diversity metrics
+            all_filtered_rules = pd.DataFrame()
+                
+            # Find a diverse set of rules
             for min_support in support_values:
-                # Only proceed if we haven't found rules yet
-                if found_rules:
+                if not all_filtered_rules.empty and len(all_filtered_rules) >= max_rules_to_find:
                     break
                     
                 frequent_itemsets = apriori(basket_sets, min_support=min_support, use_colnames=True)
@@ -209,75 +226,136 @@ def market_basket_analysis(df):
                     ]
                     
                     if not filtered_rules.empty:
-                        # We found rules! Store them and break the loop
-                        best_rules = filtered_rules.sort_values(
-                            by=['confidence', 'lift'], ascending=[False, False]
-                        ).copy()
-                        found_rules = True
-                        
-                        # Show parameters used for transparency
-                        st.caption(f"Analysis parameters automatically set to: Support = {min_support:.3f}, Confidence = {min_conf:.1f}")
-                        break
-
-            if best_rules.empty:
+                        # Add these rules to our collection
+                        all_filtered_rules = pd.concat([all_filtered_rules, filtered_rules])
+                        # Break if we have enough rules
+                        if len(all_filtered_rules) >= max_rules_to_find:
+                            break
+            
+            # Process collected rules
+            if all_filtered_rules.empty:
                 st.warning(f"No meaningful associations found for **{selected_product}**. Try selecting another product.")
                 return
-
-            # Display rules
-            st.subheader("Top Product Associations for: " + selected_product)
-            top_rules = best_rules.head(5)
+                
+            # Show parameters used for transparency
+            st.caption(f"Analysis parameters dynamically set based on product frequency ({product_frequency:.1%})")
             
-            # Format rule display
-            top_rules['antecedents'] = top_rules['antecedents'].apply(lambda x: ', '.join(sorted(list(x))))
-            top_rules['consequents'] = top_rules['consequents'].apply(lambda x: ', '.join(sorted(list(x))))
-            top_rules['support'] = top_rules['support'].map('{:.1%}'.format)
-            top_rules['confidence'] = top_rules['confidence'].map('{:.1%}'.format)
-            top_rules['lift'] = top_rules['lift'].map('{:.2f}'.format)
+            # Anti-overfitting: Apply diversity filters
+            # 1. Remove duplicate rules (same antecedents and consequents)
+            all_filtered_rules = all_filtered_rules.drop_duplicates(subset=['antecedents', 'consequents'])
+            
+            # 2. Prioritize rules with higher lift but reasonable confidence
+            # This helps avoid 100% confidence rules that might be statistical flukes
+            all_filtered_rules['quality_score'] = (
+                all_filtered_rules['lift'] * 
+                np.log1p(all_filtered_rules['support'] * 100) *  # Log-scale support is more meaningful
+                np.tanh(all_filtered_rules['confidence'] * 2)    # Tanh reduces extreme confidence bias
+            )
+            
+            best_rules = all_filtered_rules.sort_values('quality_score', ascending=False).head(15)
+            
+            # Calculate diversity metrics for display
+            rule_count = len(best_rules)
+            avg_confidence = best_rules['confidence'].mean()
+            avg_lift = best_rules['lift'].mean()
+            distinct_products = set()
+            
+            for idx, row in best_rules.iterrows():
+                for item in list(row['antecedents']) + list(row['consequents']):
+                    distinct_products.add(item)
+            
+            st.subheader(f"Top Product Associations for: {selected_product}")
+            st.caption(f"Found {rule_count} rules connecting {selected_product} with {len(distinct_products)-1} other products")
+            
+            # Format for display
+            display_rules = best_rules.head(5).copy()  # Only show top 5 to avoid overwhelming
+            display_rules['antecedents'] = display_rules['antecedents'].apply(lambda x: ', '.join(sorted(list(x))))
+            display_rules['consequents'] = display_rules['consequents'].apply(lambda x: ', '.join(sorted(list(x))))
+            display_rules['support'] = display_rules['support'].map('{:.1%}'.format)
+            display_rules['confidence'] = display_rules['confidence'].map('{:.1%}'.format)
+            display_rules['lift'] = display_rules['lift'].map('{:.2f}'.format)
 
-            st.dataframe(top_rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
+            # Remove quality_score before displaying
+            st.dataframe(display_rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
 
-            # Visualization
+            # Visualization - now with diversity focus
             st.subheader("Association Strength Visualization")
             fig, ax = plt.subplots(figsize=(10, 6))
-            sns.scatterplot(
-                data=best_rules.head(15),  # Show more data points
-                x="support",
+            
+            # Make plot more informative
+            scatter = sns.scatterplot(
+                data=best_rules,
+                x="support", 
                 y="confidence",
                 size="lift",
                 hue="lift",
                 sizes=(50, 300),
-                ax=ax,
-                palette="viridis"
+                ax=ax, 
+                palette="viridis",
+                alpha=0.7
             )
+            
+            # Add rule numbers for easier reference
+            for i, (idx, row) in enumerate(best_rules.iterrows(), 1):
+                if i <= 10:  # Only number the top 10 points
+                    ax.text(row['support']+0.001, row['confidence']+0.01, str(i), 
+                            fontsize=9, ha='center', va='center',
+                            bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', pad=1))
+            
             plt.title(f"Product Association Map for {selected_product}")
             plt.xlabel("Support (Frequency of Occurrence)")
             plt.ylabel("Confidence (Strength of Association)")
-            ax.grid(True, linestyle='--', alpha=0.7)
+            ax.grid(True, linestyle='--', alpha=0.4)
+            
+            # Set axes to start from 0
+            ax.set_xlim(0, max(best_rules['support']) * 1.1)
+            ax.set_ylim(0, max(1.0, max(best_rules['confidence']) * 1.1))
+            
             st.pyplot(fig)
 
-            # Actionable insights section
+            # Actionable insights section - focus on diversity
             st.subheader("Actionable Insights")
             
-            # Get the strongest rule
-            top_rule = best_rules.iloc[0]
-            antecedent = ', '.join(list(top_rule['antecedents']))
-            consequent = ', '.join(list(top_rule['consequents']))
+            # Get multiple top rules
+            diverse_insights = []
+            processed_items = set([selected_product])
             
-            if selected_product in top_rule['antecedents']:
-                st.write(f"💡 When customers buy **{selected_product}**, "
-                         f"they are **{top_rule['confidence']:.0%}** likely to also buy "
-                         f"**{consequent}** (lift: {top_rule['lift']:.2f})")
-            else:
-                st.write(f"💡 When customers buy **{antecedent}**, "
-                         f"they are **{top_rule['confidence']:.0%}** likely to also buy "
-                         f"**{selected_product}** (lift: {top_rule['lift']:.2f})")
+            # Get diverse insights by selecting rules with new products
+            for _, rule in best_rules.iterrows():
+                if len(diverse_insights) >= 3:  # Limit to 3 insights
+                    break
+                    
+                antecedent_items = set(rule['antecedents'])
+                consequent_items = set(rule['consequents'])
                 
+                # Check if this rule introduces new products
+                all_items = antecedent_items.union(consequent_items)
+                if len(all_items.difference(processed_items)) > 0:
+                    # This rule has new items
+                    processed_items.update(all_items)
+                    diverse_insights.append(rule)
+            
+            # Show diverse insights
+            for i, rule in enumerate(diverse_insights, 1):
+                antecedent = ', '.join(sorted(list(rule['antecedents'])))
+                consequent = ', '.join(sorted(list(rule['consequents'])))
+                
+                if selected_product in rule['antecedents']:
+                    st.write(f"{i}. When customers buy **{selected_product}**, "
+                             f"they are **{rule['confidence']:.1%}** likely to also buy "
+                             f"**{consequent}** (lift: {rule['lift']:.2f})")
+                else:
+                    st.write(f"{i}. When customers buy **{antecedent}**, "
+                             f"they are **{rule['confidence']:.1%}** likely to also buy "
+                             f"**{selected_product}** (lift: {rule['lift']:.2f})")
+            
+            # Product recommendation strategies
             st.markdown("""
-            **Recommendations:**
-            - Place these products near each other in store displays
-            - Create bundled promotions combining these items
-            - Use these insights for targeted marketing campaigns
-            - Develop personalized product recommendations
+            **Recommendation Strategies:**
+            - **Store Layout**: Position frequently associated products close to each other
+            - **Bundle Pricing**: Create discounts for purchasing associated products together
+            - **Targeted Marketing**: Show complementary product ads to customers based on purchase history
+            - **Personalized Recommendations**: Build "Customers Also Bought" features
             """)
             
     except Exception as e:
