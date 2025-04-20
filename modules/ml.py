@@ -174,82 +174,112 @@ def market_basket_analysis(df):
         st.info("Preparing transaction data...")
         basket_sets = prepare_basket_data(df)
 
-        # 🎯 Let user select a product
+        # Let user select a product
         all_products = basket_sets.columns.tolist()
         selected_product = st.selectbox("Select a Product", sorted(all_products))
 
-        if st.button("Find Associated Products"):
-            with st.spinner("Running Market Basket Analysis..."):
-
-                # Try multiple support-confidence combinations to extract rules
-                support_values = [0.01, 0.02, 0.03, 0.05]
-                confidence_values = [0.3, 0.4, 0.5, 0.6, 0.7]
-
-                best_rules = pd.DataFrame()
-                for min_support in support_values:
-                    frequent_itemsets = apriori(basket_sets, min_support=min_support, use_colnames=True)
-                    if frequent_itemsets.empty:
+        # Auto-run when product is selected (no button needed)
+        with st.spinner("Finding product associations..."):
+            # Support and confidence ranges to try
+            support_values = [0.005, 0.01, 0.02, 0.03, 0.05, 0.1]
+            confidence_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+            
+            best_rules = pd.DataFrame()
+            found_rules = False
+            
+            # Start with stricter parameters, gradually relax if no rules found
+            for min_support in support_values:
+                # Only proceed if we haven't found rules yet
+                if found_rules:
+                    break
+                    
+                frequent_itemsets = apriori(basket_sets, min_support=min_support, use_colnames=True)
+                if frequent_itemsets.empty:
+                    continue
+                    
+                for min_conf in confidence_values:
+                    rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=min_conf)
+                    if rules.empty:
                         continue
-                    for min_conf in confidence_values:
-                        rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=min_conf)
-                        if not rules.empty:
-                            # Filter rules containing the selected product
-                            filtered_rules = rules[
-                                rules['antecedents'].apply(lambda x: selected_product in x) |
-                                rules['consequents'].apply(lambda x: selected_product in x)
-                            ]
-                            if not filtered_rules.empty:
-                                best_rules = filtered_rules.sort_values(
-                                    by=['confidence', 'lift'], ascending=[False, False]
-                                ).copy()
-                                break
-                    if not best_rules.empty:
+                        
+                    # Filter rules containing the selected product
+                    filtered_rules = rules[
+                        rules['antecedents'].apply(lambda x: selected_product in x) |
+                        rules['consequents'].apply(lambda x: selected_product in x)
+                    ]
+                    
+                    if not filtered_rules.empty:
+                        # We found rules! Store them and break the loop
+                        best_rules = filtered_rules.sort_values(
+                            by=['confidence', 'lift'], ascending=[False, False]
+                        ).copy()
+                        found_rules = True
+                        
+                        # Show parameters used for transparency
+                        st.caption(f"Analysis parameters automatically set to: Support = {min_support:.3f}, Confidence = {min_conf:.1f}")
                         break
 
-                if best_rules.empty:
-                    st.warning(f"No meaningful rules found for **{selected_product}**. Try with another product.")
-                    return
+            if best_rules.empty:
+                st.warning(f"No meaningful associations found for **{selected_product}**. Try selecting another product.")
+                return
 
-                # Display rules
-                st.subheader("Top Association Rules for: " + selected_product)
-                top_rules = best_rules.head(5)
-                top_rules['antecedents'] = top_rules['antecedents'].apply(lambda x: ', '.join(sorted(list(x))))
-                top_rules['consequents'] = top_rules['consequents'].apply(lambda x: ', '.join(sorted(list(x))))
-                top_rules['support'] = top_rules['support'].map('{:.1%}'.format)
-                top_rules['confidence'] = top_rules['confidence'].map('{:.1%}'.format)
-                top_rules['lift'] = top_rules['lift'].map('{:.2f}'.format)
+            # Display rules
+            st.subheader("Top Product Associations for: " + selected_product)
+            top_rules = best_rules.head(5)
+            
+            # Format rule display
+            top_rules['antecedents'] = top_rules['antecedents'].apply(lambda x: ', '.join(sorted(list(x))))
+            top_rules['consequents'] = top_rules['consequents'].apply(lambda x: ', '.join(sorted(list(x))))
+            top_rules['support'] = top_rules['support'].map('{:.1%}'.format)
+            top_rules['confidence'] = top_rules['confidence'].map('{:.1%}'.format)
+            top_rules['lift'] = top_rules['lift'].map('{:.2f}'.format)
 
-                st.dataframe(top_rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
+            st.dataframe(top_rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
 
-                # Visualization
-                st.subheader("Rule Visualization")
-                fig, ax = plt.subplots(figsize=(10, 6))
-                sns.scatterplot(
-                    data=best_rules.head(20),
-                    x="support",
-                    y="confidence",
-                    size="lift",
-                    hue="lift",
-                    sizes=(40, 200),
-                    ax=ax
-                )
-                plt.title(f"Association Rules (Size = Lift) — {selected_product}")
-                plt.xlabel("Support")
-                plt.ylabel("Confidence")
-                st.pyplot(fig)
+            # Visualization
+            st.subheader("Association Strength Visualization")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.scatterplot(
+                data=best_rules.head(15),  # Show more data points
+                x="support",
+                y="confidence",
+                size="lift",
+                hue="lift",
+                sizes=(50, 300),
+                ax=ax,
+                palette="viridis"
+            )
+            plt.title(f"Product Association Map for {selected_product}")
+            plt.xlabel("Support (Frequency of Occurrence)")
+            plt.ylabel("Confidence (Strength of Association)")
+            ax.grid(True, linestyle='--', alpha=0.7)
+            st.pyplot(fig)
 
-                # Insight
-                top_rule = best_rules.iloc[0]
-                st.subheader("Actionable Insight")
-                st.write(f"💡 If customers buy **{', '.join(list(top_rule['antecedents']))}**, "
+            # Actionable insights section
+            st.subheader("Actionable Insights")
+            
+            # Get the strongest rule
+            top_rule = best_rules.iloc[0]
+            antecedent = ', '.join(list(top_rule['antecedents']))
+            consequent = ', '.join(list(top_rule['consequents']))
+            
+            if selected_product in top_rule['antecedents']:
+                st.write(f"💡 When customers buy **{selected_product}**, "
                          f"they are **{top_rule['confidence']:.0%}** likely to also buy "
-                         f"**{', '.join(list(top_rule['consequents']))}** (lift: {top_rule['lift']:.2f})")
-                st.markdown("""
-                **Recommendations:**
-                - Promote these items together
-                - Bundle in special offers
-                - Use this insight for personalized recommendations
-                """)
+                         f"**{consequent}** (lift: {top_rule['lift']:.2f})")
+            else:
+                st.write(f"💡 When customers buy **{antecedent}**, "
+                         f"they are **{top_rule['confidence']:.0%}** likely to also buy "
+                         f"**{selected_product}** (lift: {top_rule['lift']:.2f})")
+                
+            st.markdown("""
+            **Recommendations:**
+            - Place these products near each other in store displays
+            - Create bundled promotions combining these items
+            - Use these insights for targeted marketing campaigns
+            - Develop personalized product recommendations
+            """)
+            
     except Exception as e:
         st.error("An error occurred during analysis.")
         st.exception(e)
